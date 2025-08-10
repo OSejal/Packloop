@@ -26,7 +26,18 @@ const MainLayout = () => {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <Link to="/" className="text-xl font-bold text-green-600">MCP System</Link>
+               <Link to="/" className="flex items-center">
+                <img
+                  src="/favicon.png" // replace with your image path
+                  alt="Logo"
+                  className="h-8 w-8 object-contain"
+                />
+                <span className="ml-2 text-xl font-bold text-green-600">
+                  Packl
+                  <span className="text-orange-500">oo</span>
+                  p
+                </span>
+               </Link>
               </div>
             </div>
             
@@ -108,7 +119,7 @@ const MainLayout = () => {
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               <Link 
                 to="/" 
-                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                className="px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <FiHome className="w-4 h-4" />
@@ -120,7 +131,7 @@ const MainLayout = () => {
                   {user && user.role === 'MCP' && (
                     <Link 
                       to="/partners" 
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      className="px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       <FiUser className="w-4 h-4" />
@@ -130,7 +141,7 @@ const MainLayout = () => {
                   
                   <Link 
                     to="/wallet" 
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <FiCreditCard className="w-4 h-4" />
@@ -140,7 +151,7 @@ const MainLayout = () => {
                   {user && user.role === 'PICKUP_PARTNER' && (
                     <Link 
                       to="/pickups" 
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      className="px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       <FiTruck className="w-4 h-4" />
@@ -150,7 +161,7 @@ const MainLayout = () => {
                   
                   <Link 
                     to="/orders" 
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <FiPackage className="w-4 h-4" />
@@ -159,7 +170,7 @@ const MainLayout = () => {
                   
                   <Link 
                     to="/profile" 
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <FiUser className="w-4 h-4" />
@@ -171,7 +182,7 @@ const MainLayout = () => {
                       handleLogout();
                       setIsMobileMenuOpen(false);
                     }} 
-                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"
                   >
                     <FiLogOut className="w-4 h-4" />
                     Logout
@@ -188,7 +199,7 @@ const MainLayout = () => {
                   </Link>
                   <Link 
                     to="/register" 
-                    className="block px-3 py-2 rounded-md text-base font-medium bg-green-600 text-white hover:bg-green-700 mx-3 my-2 py-2 text-center"
+                    className="block px-3 rounded-md text-base font-medium bg-green-600 text-white hover:bg-green-700 mx-3 my-2 py-2 text-center"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Register

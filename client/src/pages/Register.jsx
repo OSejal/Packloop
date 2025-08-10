@@ -115,8 +115,9 @@ const Register = () => {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-200px)] py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex min-h-[calc(100vh-200px)] py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
       <div className="w-full max-w-md space-y-8 mx-auto">
+        <div className='bg-white p-8 rounded-lg shadow-lg space-y-8'>
         <div>
           <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">
             Create new account
@@ -291,6 +292,7 @@ const Register = () => {
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

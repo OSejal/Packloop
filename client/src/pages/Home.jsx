@@ -27,10 +27,16 @@ const Home = () => {
         <p className="mt-6 text-lg leading-8 text-gray-600">
           A platform for managing material collection and recycling partnerships
         </p>
+          
+        {isAuthenticated && (
+        <button className="group relative flex w-100 pl-7 pr-7 justify-center rounded-full bg-green-600 px-3 py-3 mt-5 text-sm font-semibold text-white hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:bg-green-300">
+          Get Started 
+        </button>
+        )}
       </div>
       
       {!isAuthenticated && (
-        <div className="mt-10 flex items-center justify-center gap-x-6">
+        <div className="mt-10 flex items-center gap-x-6">
           <Link
             to="/register"
             className="rounded-md bg-green-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
@@ -38,7 +44,10 @@ const Home = () => {
             Get started
           </Link>
 
-          <Link to="/login" className="text-sm font-semibold leading-6 text-gray-900">
+          <Link 
+            to="/login" 
+            className="text-sm font-semibold leading-6 text-gray-900"
+          >
             Sign in <span aria-hidden="true">→</span>
           </Link>
         </div>
@@ -46,7 +55,7 @@ const Home = () => {
     </div>
 
     {/* IMAGE SECTION */}
-    <div className="relative flex items-start justify-center px-5 mt-[-90px] ml-15">
+    <div className="relative flex items-start justify-center px-3 mt-[-90px]">
     {/* Top Img */}
     <img
       src="/1.png"
