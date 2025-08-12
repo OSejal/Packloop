@@ -403,7 +403,7 @@ const Wallet = () => {
           <EmptyState
             title="No transactions yet"
             description="Your transaction history will appear here"
-            icon={<FiCreditCard className="w-12 h-12 text-gray-400" />}
+            icon={<FiCreditCard className="w-12 h-12 text-gray-400 ml-20" />}
           />
         ) : (
           <div className="overflow-x-auto">

@@ -138,7 +138,7 @@ const Orders = () => {
           <EmptyState
             title={statusFilter === 'ALL' ? "No orders yet" : `No ${statusFilter.toLowerCase()} orders`}
             description={statusFilter === 'ALL' ? "You haven't placed any orders yet" : `You don't have any orders with status "${statusFilter.toLowerCase()}"`}
-            icon={<FiPackage className="w-12 h-12 text-gray-400" />}
+            icon={<FiPackage className="w-12 h-12 text-gray-400 ml-20" />}
             actionButton={
               statusFilter !== 'ALL' ? (
                 <Button 

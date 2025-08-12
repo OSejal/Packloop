@@ -8,12 +8,15 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
+    image: user?.image || '' 
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
+  const [preview, setPreview] = useState(null);
+  const [isImageUploaded, setIsImageUploaded] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,7 +28,6 @@ const Profile = () => {
       [name]: value,
     });
     
-    // Clear error when user types
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -65,6 +67,30 @@ const Profile = () => {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Create a preview
+    setPreview(URL.createObjectURL(file));
+
+    const formDataImg = new FormData();
+    formDataImg.append("file", file);
+    formDataImg.append("upload_preset", "partner's profile");
+    formDataImg.append("cloud_name", "dwdau60x1");
+
+    try {
+      const res = await axios.post(
+        `https://api.cloudinary.com/v1_1/dwdau60x1/image/upload`,
+        formDataImg
+      );
+      setFormData((prev) => ({ ...prev, image: res.data.secure_url }));
+      setIsImageUploaded(true);
+    } catch (err) {
+      console.error("Image upload failed:", err);
+    }
   };
 
   const validatePassword = () => {
@@ -143,8 +169,7 @@ const Profile = () => {
     <div className="w-full">
       <div className="bg-white shadow rounded-lg">
         <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
+          <div className="flex justify-end items-center mb-6">
             {!isEditing && (
               <button
                 type="button"
@@ -243,31 +268,57 @@ const Profile = () => {
               </div>
             </form>
           ) : (
-            <div className="space-y-4">
+            <div className="flex flex-row gap-20">
+              <div className="flex flex-col items-center">
+                <label htmlFor="fileInput" className="cursor-pointer">
+                  {preview || formData.image ? (
+                    <img
+                      src={preview || formData.image}
+                      alt="Uploaded preview"
+                      className="w-28 h-28 rounded-full border-object-cover border-2 mb-5"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                      +
+                    </div>
+                  )}
+                </label>
+                <input
+                  type="file"
+                  id="fileInput"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  disabled={isImageUploaded}
+                />
+              </div>
+
+              <div className='flex flex-col gap-2'> 
               <div className="flex items-center">
-                <span className="w-32 text-sm font-medium text-gray-500">Name:</span>
-                <span className="text-sm text-gray-900">{user.name}</span>
+                <span className="w-32 text-sm font-medium text-green-500">Name:</span>
+                <span className="text-md text-gray-900">{user.name}</span>
               </div>
               <div className="flex items-center">
-                <span className="w-32 text-sm font-medium text-gray-500">Email:</span>
-                <span className="text-sm text-gray-900">{user.email}</span>
+                <span className="w-32 text-sm font-medium text-green-500">Email:</span>
+                <span className="text-md text-gray-900 mr-10">{user.email}</span>
               </div>
               <div className="flex items-center">
-                <span className="w-32 text-sm font-medium text-gray-500">Phone:</span>
-                <span className="text-sm text-gray-900">{user.phone}</span>
+                <span className="w-32 text-sm font-medium text-green-500">Phone:</span>
+                <span className="text-md text-gray-900">{user.phone}</span>
               </div>
               <div className="flex items-center">
-                <span className="w-32 text-sm font-medium text-gray-500">Role:</span>
-                <span className="text-sm text-gray-900">
+                <span className="w-32 text-sm font-medium text-green-500">Role:</span>
+                <span className="text-md text-gray-900">
                   {user.role === 'MCP' ? 'MCP (Material Collection Point)' : 'Pickup Partner'}
                 </span>
               </div>
               {user.role === 'PICKUP_PARTNER' && user.mcpId && (
                 <div className="flex items-center">
                   <span className="w-32 text-sm font-medium text-gray-500">MCP Partner:</span>
-                  <span className="text-sm text-gray-900">{user.mcpId.name}</span>
+                  <span className="text-md text-gray-900">{user.mcpId.name}</span>
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>

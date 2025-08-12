@@ -12,6 +12,7 @@ const Partners = () => {
   const { user, refreshTokenIfNeeded } = useAuth();
   const [partners, setPartners] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -20,7 +21,8 @@ const Partners = () => {
     name: '',
     email: '',
     phone: '',
-    password: ''
+    password: '',
+    img: ''
   });
   const [formErrors, setFormErrors] = useState({});
 
@@ -33,7 +35,6 @@ const Partners = () => {
       setIsLoading(true);
       const response = await partnerService.getPartners();
       
-      // Handle the response structure from the backend
       let pickupPartners = [];
       if (Array.isArray(response.data)) {
         // Direct array response
@@ -42,7 +43,6 @@ const Partners = () => {
           (partner.mcpId === user.id || partner.mcpId === user._id)
         );
       } else if (response.data && response.data.data && response.data.data.partners) {
-        // Nested data structure
         pickupPartners = response.data.data.partners.filter(
           partner => partner.role === 'PICKUP_PARTNER' && 
           (partner.mcpId === user.id || partner.mcpId === user._id)
@@ -110,13 +110,32 @@ const Partners = () => {
     return Object.keys(errors).length === 0;
   };
 
+  const handleImageUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const formDataImg = new FormData();
+  formDataImg.append("file", file);
+  formDataImg.append("upload_preset", "partner's profile");
+  formDataImg.append("cloud_name", "dwdau60x1");
+
+  try {
+    const res = await axios.post(
+      `https://api.cloudinary.com/v1_1/dwdau60x1/image/upload`,
+      formDataImg
+    );
+    setFormData((prev) => ({ ...prev, image: res.data.secure_url }));
+  } catch (err) {
+    console.error("Image upload failed:", err);
+  }
+  };
+
   const handleCreatePartner = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) return;
     
     try {
-      // Make sure we're using the correct ID format
       const mcpId = user.id || user._id;
       console.log('User object:', user);
       console.log('Using MCP ID:', mcpId);
@@ -139,14 +158,12 @@ const Partners = () => {
       
       let response;
       try {
-        // First attempt
         response = await partnerService.createPartner(partnerData);
       } catch (initialError) {
         if (initialError.response?.status === 401) {
           // Token might be expired, try to refresh and retry
           const refreshed = await refreshTokenIfNeeded();
           if (refreshed) {
-            // Retry the request
             response = await partnerService.createPartner(partnerData);
           } else {
             throw initialError;
@@ -215,7 +232,6 @@ const Partners = () => {
     );
   }
 
-  // Check if the current user is an MCP
   if (user.role !== 'MCP') {
     return (
       <div className="text-center py-12">
@@ -268,7 +284,7 @@ const Partners = () => {
             <EmptyState
               title="No pickup partners yet"
               description="You haven't added any pickup partners yet"
-              icon={<FiUser className="w-12 h-12 text-gray-400" />}
+              icon={<FiUser className="w-12 h-12 text-gray-400 ml-20" />}
               actionButton={
                 <Button 
                   onClick={() => setShowCreateModal(true)}
@@ -302,13 +318,16 @@ const Partners = () => {
                       <h3 className="text-lg font-medium text-gray-900">{partner.name}</h3>
                       <p className="text-sm text-gray-500">{partner.role}</p>
                     </div>
-                    <div className="flex space-x-2">
+                    {/* <div className="flex space-x-2">
+                      {!isEditing && (
                       <button
                         className="text-blue-500 hover:text-blue-700"
                         title="Edit partner"
                       >
                         <FiEdit2 />
                       </button>
+                      )}
+                      
                       <button
                         className="text-red-500 hover:text-red-700"
                         title="Delete partner"
@@ -319,7 +338,9 @@ const Partners = () => {
                       >
                         <FiTrash2 />
                       </button>
-                    </div>
+                    </div> */}
+
+                    
                   </div>
                   
                   <div className="mt-4 space-y-2">
@@ -333,14 +354,22 @@ const Partners = () => {
                     </div>
                   </div>
                   
-                  <div className="mt-4">
+                  <div className="mt-4 flex flex-row gap-5">
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      fullWidth
+                      // fullWidth
                     >
                       View Details
                     </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      // fullWidth
+                    >
+                      View Details
+                    </Button>
+
                   </div>
                 </div>
               ))}
@@ -444,6 +473,21 @@ const Partners = () => {
                       <p className="mt-1 text-xs text-gray-500">
                         Password must be at least 6 characters long
                       </p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="image" className="block text-sm font-medium text-gray-700">
+                        Profile Image
+                      </label>
+
+                      <input
+                        type="file"
+                        id="image"
+                        name="image"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="mt-1 block w-full text-sm text-gray" 
+                      />
                     </div>
                     
                     <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
