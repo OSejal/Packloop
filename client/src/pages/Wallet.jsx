@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FiCreditCard, FiDollarSign, FiArrowUp, FiArrowDown, FiClock, FiFilter } from 'react-icons/fi';
+import { FiCreditCard, FiArrowUp, FiArrowDown, FiClock, FiFilter } from 'react-icons/fi';
 import { walletService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
@@ -77,7 +77,6 @@ const Wallet = () => {
       if (walletResponse.data?.success) {
         setWalletData(walletResponse.data.data || { balance: 0 });
       } else {
-        console.error('Invalid wallet response:', walletResponse);
         setError('Failed to load wallet data');
         toast.error('Failed to load wallet data');
       }
@@ -143,7 +142,6 @@ const Wallet = () => {
         throw new Error(response.data?.message || 'Failed to add funds');
       }
     } catch (error) {
-      console.error('Error adding funds:', error);
       toast.error(error.message || 'Failed to add funds');
     } finally {
       setIsSubmitting(false);
@@ -160,7 +158,6 @@ const Wallet = () => {
         throw new Error('Insufficient balance');
       }
       
-      console.log('Withdrawing funds:', withdrawForm);
       const response = await walletService.withdrawFunds(withdrawForm);
       console.log('Withdraw response:', response);
       
@@ -180,7 +177,6 @@ const Wallet = () => {
         throw new Error(response.data?.message || 'Failed to process withdrawal');
       }
     } catch (error) {
-      console.error('Error withdrawing funds:', error);
       toast.error(error.message || 'Failed to process withdrawal');
     } finally {
       setIsSubmitting(false);
@@ -200,7 +196,6 @@ const Wallet = () => {
       const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
       return new Date(dateString).toLocaleDateString('en-US', options);
     } catch (error) {
-      console.error('Error formatting date:', error);
       return 'Invalid Date';
     }
   };
@@ -213,7 +208,6 @@ const Wallet = () => {
         minimumFractionDigits: 2
       }).format(amount || 0);
     } catch (error) {
-      console.error('Error formatting amount:', error);
       return `₹0.00`;
     }
   };
@@ -270,7 +264,7 @@ const Wallet = () => {
                   setTransactions(transactionsResponse.data.transactions || []);
                 }
               } catch (error) {
-                console.error('Error fetching data:', error);
+                // console.error('Error fetching data:', error);
                 setError('Failed to load wallet data');
                 toast.error('Failed to load wallet data');
               } finally {
@@ -301,7 +295,6 @@ const Wallet = () => {
           <div className="mt-6">
             <p className="text-sm text-green-100">Available Balance</p>
             <div className="flex items-baseline">
-              <FiDollarSign className="w-6 h-6 mr-2" />
               <span className="text-3xl font-bold">
                 {formatAmount(walletData.balance)}
               </span>

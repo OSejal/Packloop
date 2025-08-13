@@ -339,8 +339,6 @@ const Partners = () => {
                         <FiTrash2 />
                       </button>
                     </div> */}
-
-                    
                   </div>
                   
                   <div className="mt-4 space-y-2">
@@ -358,16 +356,23 @@ const Partners = () => {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      // fullWidth
+                      onClick={() => setShowCreateModal(true)}
+                      
                     >
-                      View Details
+                      <span className='text-blue-500 hover:text-blue-700 p-2'><FiEdit2 /></span>
+                      Edit Details
                     </Button>
                     <Button 
                       variant="outline" 
-                      size="sm" 
-                      // fullWidth
+                      size="sm"
+                      className="p-4"
+                      onClick={() => {
+                        setSelectedPartner(partner);
+                        setShowDeleteModal(true);
+                      }} 
                     >
-                      View Details
+                      <span className='text-red-500 hover:text-red-700 p-2'> <FiTrash2 /> </span>
+                      Delete
                     </Button>
 
                   </div>
