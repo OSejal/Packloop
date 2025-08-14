@@ -81,7 +81,7 @@ const Home = () => {
             <h1 className="text-4xl font-bold tracking-tight text-orange-500 sm:text-6xl">
               <ReactTyped
                 strings={["Delivery"]}
-                typeSpeed={80}
+                typeSpeed={50}
                 backSpeed={50}
                 loop
               />

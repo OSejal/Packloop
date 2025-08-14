@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPackage, FiFilter, FiChevronDown, FiEye, FiCalendar, FiClock, FiShoppingBag, FiX } from 'react-icons/fi';
+import { FiPackage, FiFilter, FiChevronDown, FiEye, FiCalendar, FiClock, FiShoppingBag, FiX, FiUserPlus } from 'react-icons/fi';
 import { orderService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -117,6 +117,13 @@ const Orders = () => {
             <h2 className="text-xl font-semibold">Your Orders</h2>
             
             <div className="relative">
+              <Button 
+                onClick={() => setShowCreateModal(true)}
+                variant="primary"
+                icon={<FiUserPlus />}
+              >
+                Track Order
+              </Button>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -129,6 +136,7 @@ const Orders = () => {
                 <option value="DELIVERED">Delivered</option>
                 <option value="CANCELLED">Cancelled</option>
               </select>
+              
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                 <FiChevronDown className="h-5 w-5 text-white" />
               </div>
