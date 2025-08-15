@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import axios from "axios";
 import { FiCreditCard, FiArrowUp, FiArrowDown, FiClock, FiFilter } from 'react-icons/fi';
 import { walletService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -51,6 +52,99 @@ const Wallet = () => {
     }
   });
 
+  const [responseId, setResponseId] = useState("");
+  const [responseState, setResponseState] = useState([]);
+  
+    const loadScript = (src) => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+
+      script.src = src;
+
+      script.onload = () => {
+        resolve(true);
+      };
+      script.onerror = () => {
+        resolve(false);
+      };
+
+      document.body.appendChild(script);
+    });
+  };
+
+  
+    const createRazorpayOrder = (amount) => {
+       let data = JSON.stringify({
+        amount: amount,
+        currency: "INR"
+      })
+       
+      let config = {
+        method: "post",
+        maxBodyLength: Infinity,
+        url: "http://localhost:4000/api/payments/orders",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        data: data
+      }
+  
+      axios.request(config)
+      .then((response) => {
+        console.log(JSON.stringify(response.data))
+        handleRazorpayScreen(response.data.amount)
+      })
+      .catch((error) => {
+        console.log("error at", error)
+      })
+    }
+
+    const handleRazorpayScreen = async(amount) => {
+      const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js")
+
+      if (!res) {
+        alert("Some error at razorpay screen loading")
+        return;
+      }
+
+      const options = {
+        key: 'rzp_test_R5IPYCVzJiCP0V',
+        amount: amount,
+        currency: 'INR',
+        name: "Sejal Sinha",
+        description: "payment to Sejal Sinha",
+        // image: "https://papayacoders.com/demo.png",
+        handler: function (response){
+          setResponseId(response.razorpay_payment_id)
+        },
+        prefill: {
+          name: "Sejal Sinha",
+          email: "sejalsinha322@gmail.com"
+        },
+        theme: {
+          color: "#F4C430"
+        }
+      }
+
+      const paymentObject = new window.Razorpay(options)
+      paymentObject.open()
+    }
+
+    const paymentFetch = (e) => {
+      e.preventDefault();
+
+      const paymentId = e.target.paymentId.value;
+
+      axios.get(`http://localhost:4000/api/payments/${paymentId}`)
+      .then((response) => {
+        console.log(response.data);
+        setResponseState(response.data)
+      })
+      .catch((error) => {
+         console.log("error occurs", error)
+      })
+    }
+
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -81,8 +175,8 @@ const Wallet = () => {
         toast.error('Failed to load wallet data');
       }
 
-      if (transactionsResponse.data?.success) {
-        setTransactions(transactionsResponse.data.transactions || []);
+      if (Array.isArray(transactionsResponse.data?.transactions)) {
+        setTransactions(transactionsResponse.data.transactions);
       } else {
         console.error('Invalid transactions response:', transactionsResponse);
         setTransactions([]);
@@ -499,10 +593,11 @@ const Wallet = () => {
               <Button 
                 type="submit" 
                 variant="primary"
-                loading={isSubmitting}
-                disabled={isSubmitting}
+                onClick={() => createRazorpayOrder(100)}
+                // loading={isSubmitting}
+                // disabled={isSubmitting}
               >
-                Add Funds
+                Pay
               </Button>
             </div>
           </div>

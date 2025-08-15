@@ -25,6 +25,10 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const App = () => {
+  
+
+
+
   return (
     <BrowserRouter>
       <AuthProvider>
