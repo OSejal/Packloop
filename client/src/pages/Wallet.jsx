@@ -113,7 +113,6 @@ const Wallet = () => {
         currency: 'INR',
         name: "Sejal Sinha",
         description: "payment to Sejal Sinha",
-        // image: "https://papayacoders.com/demo.png",
         handler: function (response){
           setResponseId(response.razorpay_payment_id)
         },
@@ -570,17 +569,7 @@ const Wallet = () => {
               max="100000"
               disabled={isSubmitting}
             />
-            <Select
-              label="Payment Method"
-              value={addFundsForm.paymentMethod}
-              onChange={(e) => setAddFundsForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
-              options={[
-                { value: 'UPI', label: 'UPI' },
-                { value: 'Card', label: 'Credit/Debit Card' },
-                { value: 'NetBanking', label: 'Net Banking' }
-              ]}
-              disabled={isSubmitting}
-            />
+            
             <div className="flex justify-end space-x-2">
               <Button
                 type="button"

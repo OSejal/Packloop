@@ -15,6 +15,7 @@ const Partners = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [formData, setFormData] = useState({
@@ -110,25 +111,60 @@ const Partners = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleImageUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const handleEditPartner = async (e) => {
+  e.preventDefault();
 
-  const formDataImg = new FormData();
-  formDataImg.append("file", file);
-  formDataImg.append("upload_preset", "partner's profile");
-  formDataImg.append("cloud_name", "dwdau60x1");
+  if (!validateForm()) return;
 
   try {
-    const res = await axios.post(
-      `https://api.cloudinary.com/v1_1/dwdau60x1/image/upload`,
-      formDataImg
+    console.log("Editing partner with data:", formData);
+
+    let response;
+    try {
+      response = await partnerService.updatePartner(formData._id, {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+      });
+    } catch (initialError) {
+      if (initialError.response?.status === 401) {
+        const refreshed = await refreshTokenIfNeeded();
+        if (refreshed) {
+          response = await partnerService.updatePartner(formData._id, {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+          });
+        } else {
+          throw initialError;
+        }
+      } else {
+        throw initialError;
+      }
+    }
+
+    console.log("Partner update response:", response);
+    toast.success("Partner updated successfully");
+    setShowEditModal(false);
+     setPartners((prev) =>
+      prev.map((p) =>
+        p._id === formData._id ? { ...p, ...formData } : p
+      )
     );
-    setFormData((prev) => ({ ...prev, image: res.data.secure_url }));
-  } catch (err) {
-    console.error("Image upload failed:", err);
+    resetForm();
+    // fetchPartners(); // refresh UI with new values
+  } catch (error) {
+    console.error("Error status:", error.response?.status);
+    console.error("Error message:", error.message);
+
+    let errorMessage = "Failed to update partner";
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    }
+    toast.error(errorMessage);
   }
-  };
+};
+
 
   const handleCreatePartner = async (e) => {
     e.preventDefault();
@@ -179,7 +215,6 @@ const Partners = () => {
       resetForm();
       fetchPartners();
     } catch (error) {
-      console.error('Error creating partner:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
       console.error('Error message:', error.message);
@@ -313,32 +348,19 @@ const Partners = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredPartners.map((partner) => (
                 <div key={partner._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start gap-5">
+                    <div className=''>
+                      <img  
+                        src="/icon.png" 
+                        alt="" 
+                        className='w-10 h-10 rounded-full '
+                      />
+                    </div>
+
                     <div className="flex-1">
                       <h3 className="text-lg font-medium text-gray-900">{partner.name}</h3>
                       <p className="text-sm text-gray-500">{partner.role}</p>
                     </div>
-                    {/* <div className="flex space-x-2">
-                      {!isEditing && (
-                      <button
-                        className="text-blue-500 hover:text-blue-700"
-                        title="Edit partner"
-                      >
-                        <FiEdit2 />
-                      </button>
-                      )}
-                      
-                      <button
-                        className="text-red-500 hover:text-red-700"
-                        title="Delete partner"
-                        onClick={() => {
-                          setSelectedPartner(partner);
-                          setShowDeleteModal(true);
-                        }}
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div> */}
                   </div>
                   
                   <div className="mt-4 space-y-2">
@@ -356,8 +378,10 @@ const Partners = () => {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => setShowCreateModal(true)}
-                      
+                      onClick={() => {
+                        setFormData(partner);
+                        setShowEditModal(true)
+                      }}
                     >
                       <span className='text-blue-500 hover:text-blue-700 p-2'><FiEdit2 /></span>
                       Edit Details
@@ -480,21 +504,6 @@ const Partners = () => {
                       </p>
                     </div>
 
-                    <div>
-                      <label htmlFor="image" className="block text-sm font-medium text-gray-700">
-                        Profile Image
-                      </label>
-
-                      <input
-                        type="file"
-                        id="image"
-                        name="image"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="mt-1 block w-full text-sm text-gray" 
-                      />
-                    </div>
-                    
                     <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                       <Button
                         type="submit"
@@ -508,6 +517,144 @@ const Partners = () => {
                         variant="secondary"
                         className="mt-3 w-full sm:mt-0 sm:w-auto"
                         onClick={() => setShowCreateModal(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && (
+        <div className="fixed inset-0 z-10 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => setShowEditModal(false)}
+            ></div>
+
+            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+              <div className="absolute right-0 top-0 pr-4 pt-4">
+                <button
+                  type="button"
+                  className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  <span className="sr-only">Close</span>
+                  <FiX className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                  <FiEdit2 className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    Edit Details
+                  </h3>
+
+                  {/* Edit Form */}
+                  <form className="mt-6 space-y-4" onSubmit={handleEditPartner}>
+                    {/* Full Name */}
+                    <div>
+                      <label
+                        htmlFor="name"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={formData.name || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                        className={`mt-1 block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ${
+                          formErrors.name ? "ring-red-300" : "ring-gray-300"
+                        } placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-600 sm:text-sm sm:leading-6`}
+                      />
+                      {formErrors.name && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.name}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label
+                        htmlFor="email"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
+                        className={`mt-1 block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ${
+                          formErrors.email ? "ring-red-300" : "ring-gray-300"
+                        } placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-600 sm:text-sm sm:leading-6`}
+                      />
+                      {formErrors.email && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.email}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label
+                        htmlFor="phone"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        value={formData.phone || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
+                        className={`mt-1 block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ${
+                          formErrors.phone ? "ring-red-300" : "ring-gray-300"
+                        } placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-600 sm:text-sm sm:leading-6`}
+                      />
+                      {formErrors.phone && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.phone}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        className="w-full sm:ml-3 sm:w-auto"
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="mt-3 w-full sm:mt-0 sm:w-auto"
+                        onClick={() => setShowEditModal(false)}
                       >
                         Cancel
                       </Button>
