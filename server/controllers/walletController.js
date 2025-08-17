@@ -160,7 +160,6 @@ exports.addFunds = async (req, res) => {
     console.log('Found wallet:', wallet ? 'Yes' : 'No');
     
     if (!wallet) {
-      console.log('Creating new wallet for user:', userId);
       // Create new wallet if it doesn't exist
       wallet = new Wallet({
         userId,
@@ -181,11 +180,9 @@ exports.addFunds = async (req, res) => {
       }
     };
 
-    console.log('Adding transaction:', transaction);
     
     try {
       await wallet.addTransaction(transaction);
-      console.log('Transaction added successfully');
     } catch (error) {
       console.error('Error adding transaction:', error);
       throw error;

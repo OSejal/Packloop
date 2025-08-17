@@ -41,16 +41,14 @@ exports.addPartner = async (req, res) => {
     const existing = await User.findOne({ email });
     if (existing) {
       // Make email unique by adding timestamp
-      const timestamp = Date.now().toString().slice(-6);
-      email = `${email.split('@')[0]}_${timestamp}@${email.split('@')[1]}`;
+      email = `${email.split('@')[0]}@${email.split('@')[1]}`;
       console.log('Email already exists, using alternative:', email);
     }
 
-    // Check if phone exists and make it unique if needed
+    // Check if phone exists
     const existingPhone = await User.findOne({ phone });
     if (existingPhone) {
-      const timestamp = Date.now().toString().slice(-6);
-      phone = `${phone}${timestamp}`;
+      phone = `${phone}`;
       console.log('Phone already exists, using alternative:', phone);
     }
 
@@ -71,10 +69,8 @@ exports.addPartner = async (req, res) => {
       });
     }
 
-    console.log('Hashing password');
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    console.log('Creating new partner');
     const partner = new User({
       name,
       email,
@@ -86,10 +82,8 @@ exports.addPartner = async (req, res) => {
       status: 'ACTIVE'
     });
 
-    console.log('Saving partner to database');
     await partner.save();
     
-    console.log('Creating wallet for partner');
     // Create wallet for the partner
     const wallet = new Wallet({
       userId: partner._id,
@@ -114,7 +108,6 @@ exports.addPartner = async (req, res) => {
     });
   } catch (err) {
     console.error('Partner creation error:', err);
-    console.error('Error stack:', err.stack);
     
     // Check for specific error types
     if (err.name === 'ValidationError') {

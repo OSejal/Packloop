@@ -12,7 +12,7 @@ const Partners = () => {
   const { user, refreshTokenIfNeeded } = useAuth();
   const [partners, setPartners] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  // const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -117,7 +117,6 @@ const Partners = () => {
   if (!validateForm()) return;
 
   try {
-    console.log("Editing partner with data:", formData);
 
     let response;
     try {
@@ -143,7 +142,6 @@ const Partners = () => {
       }
     }
 
-    console.log("Partner update response:", response);
     toast.success("Partner updated successfully");
     setShowEditModal(false);
      setPartners((prev) =>
@@ -176,22 +174,25 @@ const Partners = () => {
       console.log('User object:', user);
       console.log('Using MCP ID:', mcpId);
       
-      // Generate a timestamp to ensure uniqueness in phone and email
-      const timestamp = new Date().getTime();
-      const uniqueSuffix = timestamp.toString().substring(timestamp.toString().length - 6);
-      
       const partnerData = {
         name: formData.name,
         email: formData.email,
-        // Make phone unique with timestamp suffix if user didn't change the default
-        phone: formData.phone.endsWith(uniqueSuffix) ? formData.phone : `${formData.phone}${uniqueSuffix}`,
+        phone: formData.phone,
         password: formData.password,
         role: 'PICKUP_PARTNER',
         mcpId: mcpId
       };
       
       console.log('Sending partner data:', partnerData);
-      
+
+      const duplicate = partners.find(
+        (p) => p.email === formData.email || p.phone === formData.phone
+      );
+      if (duplicate) {
+        toast.error("Partner with same email or phone already exists");
+        return; // Stop partner creation
+      }
+
       let response;
       try {
         response = await partnerService.createPartner(partnerData);
@@ -216,7 +217,6 @@ const Partners = () => {
       fetchPartners();
     } catch (error) {
       console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
       console.error('Error message:', error.message);
       
       // Show specific error message from API if available

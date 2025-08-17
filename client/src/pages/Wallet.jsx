@@ -158,13 +158,11 @@ const Wallet = () => {
         return;
       }
 
-      console.log('Fetching wallet data...');
       const [walletResponse, transactionsResponse] = await Promise.all([
         walletService.getWallet(),
         walletService.getTransactions(filters)
       ]);
       
-      console.log('Wallet Response:', walletResponse);
       console.log('Transactions Response:', transactionsResponse);
 
       if (walletResponse.data?.success) {
@@ -222,7 +220,6 @@ const Wallet = () => {
       setIsSubmitting(true);
       validateAmount(addFundsForm.amount);
       
-      console.log('Adding funds:', addFundsForm);
       const response = await walletService.addFunds(addFundsForm);
       console.log('Add funds response:', response);
       

@@ -275,7 +275,6 @@ const Orders = () => {
   };
 
   // Render
-  // =========================
   if (isLoading) {
     return (
       <div className="h-64 flex items-center justify-center">

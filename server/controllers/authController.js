@@ -5,85 +5,84 @@ const Wallet = require('../models/Wallet');
 
 // Register new user (MCP or Pickup Partner)
 exports.register = async (req, res) => {
-    try {
-        const { name, email, password, phone, role, mcpId } = req.body;
+  try {
+    const { name, email, password, phone, role, mcpId } = req.body;
 
-        // Check if user already exists
-        const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
-        if (existingUser) {
-            return res.status(400).json({
-                success: false,
-                message: 'User with this email or phone already exists'
-            });
-        }
-
-        // Additional validation for Pickup Partner
-        if (role === 'PICKUP_PARTNER') {
-            if (!mcpId) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'MCP ID is required for Pickup Partner registration'
-                });
-            }
-            const mcp = await User.findById(mcpId);
-            if (!mcp || mcp.role !== 'MCP') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid MCP ID provided'
-                });
-            }
-        }
-
-        // Create new user
-        const user = new User({
-            name,
-            email,
-            password,
-            phone,
-            role,
-            mcpId: role === 'PICKUP_PARTNER' ? mcpId : undefined
-        });
-
-        await user.save();
-
-        // Create wallet for the user
-        const wallet = new Wallet({
-            userId: user._id,
-            balance: 0
-        });
-
-        await wallet.save();
-
-        // Generate JWT token
-        const token = jwt.sign(
-            { userId: user._id, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        res.status(201).json({
-            success: true,
-            message: 'User registered successfully',
-            data: {
-                user: {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    phone: user.phone,
-                    role: user.role
-                },
-                token
-            }
-        });
-    } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error registering user',
-            error: error.message
-        });
+    // Check if user exists
+    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email or phone already exists",
+      });
     }
+
+    // Validation for Pickup Partner
+    if (role === "PICKUP_PARTNER") {
+      if (!mcpId) {
+        return res.status(400).json({
+          success: false,
+          message: "MCP ID is required for Pickup Partner registration",
+        });
+      }
+      const mcp = await User.findById(mcpId);
+      if (!mcp || mcp.role !== "MCP") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid MCP ID provided",
+        });
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword,
+      phone,
+      role,
+      ...(role === "PICKUP_PARTNER" && { mcpId }),
+    });
+
+    await user.save();
+
+    // Create wallet
+    await new Wallet({ userId: user._id, balance: 0 }).save();
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+        },
+        token,
+      },
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error registering user",
+      error: error.message,
+    });
+  }
 };
+
 
 // Login user
 exports.login = async (req, res) => {
