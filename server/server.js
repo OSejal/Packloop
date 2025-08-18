@@ -12,6 +12,7 @@ const walletRoutes = require('./routes/wallet');
 const pickupRoutes = require('./routes/pickup');
 const paymentRoutes = require("./routes/payments");
 const orderRoutes = require('./routes/order');
+const profileRoutes = require('./routes/profile');
 
 
 // Middleware
@@ -32,6 +33,8 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/pickups', pickupRoutes);
 app.use('/api/orders', orderRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/profile", profileRoutes);
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {

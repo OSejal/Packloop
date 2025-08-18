@@ -70,28 +70,37 @@ const Profile = () => {
   };
 
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const file = e.target.files[0];
+  if (!file) return;
 
-    // Create a preview
-    setPreview(URL.createObjectURL(file));
+  // Show preview immediately
+  setPreview(URL.createObjectURL(file));
 
-    const formDataImg = new FormData();
-    formDataImg.append("file", file);
-    formDataImg.append("upload_preset", "partner's profile");
-    formDataImg.append("cloud_name", "dwdau60x1");
+  const formDataImg = new FormData();
+  formDataImg.append("file", file);
+  formDataImg.append("upload_preset", "partners_profile"); 
 
-    try {
-      const res = await axios.post(
-        `https://api.cloudinary.com/v1_1/dwdau60x1/image/upload`,
-        formDataImg
-      );
-      setFormData((prev) => ({ ...prev, image: res.data.secure_url }));
-      setIsImageUploaded(true);
-    } catch (err) {
-      console.error("Image upload failed:", err);
-    }
-  };
+  try {
+    const res = await axios.post(
+      `https://api.cloudinary.com/v1_1/dwdau60x1/image/upload`,
+      formDataImg,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      }
+    );
+
+    // Save URL in state
+    setFormData((prev) => ({ ...prev, image: res.data.secure_url }));
+    setIsImageUploaded(true);
+
+    // Ideally: also send URL to your backend
+    await axios.post("/api/save-image", { imageUrl: res.data.secure_url });
+
+  } catch (err) {
+    console.error("Image upload failed:", err.response?.data || err.message);
+  }
+};
+
 
   const validatePassword = () => {
     const newErrors = {};
