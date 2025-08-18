@@ -1,5 +1,5 @@
 // models/Profile.js
-import mongoose from "mongoose";
+const mongoose = require('mongoose');
 
 const profileSchema = new mongoose.Schema(
   {
