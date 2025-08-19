@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { partnerService } from "../services/api";
-import { partnerService } from '../services/api';
 import { FiUser, FiMail, FiLock, FiPhone, FiUserPlus } from 'react-icons/fi';
 
 const Register = () => {
