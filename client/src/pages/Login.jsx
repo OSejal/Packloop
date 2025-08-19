@@ -47,23 +47,34 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validate()) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      const result = await login(formData);
-      if (result.success) {
-        navigate('/');
-      } else {
-        // Error is handled by the auth context (toast)
-      }
-    } finally {
-      setIsSubmitting(false);
+  e.preventDefault();
+  if (!validate()) return;
+
+  setIsSubmitting(true);
+
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+
+    const result = await res.json();
+
+    if (res.ok && result.success) {
+      navigate("/");
+    } else {
+      // Show error toast if API sends error
+      alert(result.message || "Login failed");
     }
-  };
+  } catch (error) {
+    console.error("Login error:", error);
+    alert("Server error, please try again later");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
