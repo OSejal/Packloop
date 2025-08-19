@@ -80,30 +80,39 @@ const Register = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validate()) return;
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    const userData = { ...formData };
-    if (userData.role !== "PICKUP_PARTNER") delete userData.mcpId;
+  const userData = { ...formData };
+  if (userData.role !== "PICKUP_PARTNER") delete userData.mcpId;
 
-    try {
-      const res = await authService.register(userData);
-      if (res.data.success) {
-        alert("Registration successful!");
-        navigate("/login");
-      } else {
-        alert(res.data.message || "Something went wrong");
-      }
-    } catch (error) {
-      console.error("Register error:", error);
-      alert(error.response?.data?.message || "Server not responding");
-    } finally {
-      setIsSubmitting(false);
+  try {
+    // Use the environment variable for the backend URL
+    const API_URL = import.meta.env.VITE_API_URL;
+    const res = await fetch(`${API_URL}/api/auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Registration successful!");
+      navigate("/login"); // redirect to login page
+    } else {
+      alert(data.message || "Something went wrong");
     }
-  };
+  } catch (error) {
+    console.error("Register error:", error);
+    alert("Server not responding");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
 
 
