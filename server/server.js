@@ -19,12 +19,10 @@ const profileRoutes = require('./routes/profile');
 app.use(cors());
 app.use(express.json());
 
-
 // Sample route
 app.get('/', (req, res) => {
   res.send('MCP System Backend is Running 🚀');
 });
-
 
 // routes 
 app.use('/api/auth', authRoutes);

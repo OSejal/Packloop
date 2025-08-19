@@ -1,5 +1,19 @@
 const User = require('../models/User');
 const Profile = require('../models/Profile');
+const cloudinary = require('cloudinary').v2;
+
+// Upload image to Cloudinary helper
+const uploadToCloudinary = async (file) => {
+  try {
+    const result = await cloudinary.uploader.upload(file, {
+      folder: "profiles", // optional folder in cloudinary
+      resource_type: "auto"
+    });
+    return result.secure_url; // Cloudinary hosted URL
+  } catch (error) {
+    throw new Error("Image upload failed");
+  }
+};
 
 // Get user profile
 exports.getProfile = async (req, res) => {
@@ -17,7 +31,13 @@ exports.getProfile = async (req, res) => {
 // Create or update user profile
 exports.saveProfile = async (req, res) => {
   try {
-    const { name, phone, image, role, mcpId } = req.body;
+    const { name, phone, role, mcpId } = req.body;
+    let imageUrl;
+
+    // Check if file uploaded
+    if (req.file) {
+      imageUrl = await uploadToCloudinary(req.file.path);
+    }
 
     // Find existing profile
     let profile = await Profile.findOne({ user: req.user.id });
@@ -26,7 +46,7 @@ exports.saveProfile = async (req, res) => {
       // Update existing profile
       profile.name = name || profile.name;
       profile.phone = phone || profile.phone;
-      profile.image = image || profile.image;
+      profile.image = imageUrl || profile.image;
       profile.role = role || profile.role;
       profile.mcpId = mcpId || profile.mcpId;
       await profile.save();
@@ -37,7 +57,7 @@ exports.saveProfile = async (req, res) => {
         user: req.user.id,
         name,
         phone,
-        image,
+        image: imageUrl || "",
         role,
         mcpId,
       });

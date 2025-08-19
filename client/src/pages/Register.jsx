@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api, { partnerService } from "../services/api";
 import { partnerService } from '../services/api';
 import { FiUser, FiMail, FiLock, FiPhone, FiUserPlus } from 'react-icons/fi';
 
@@ -20,6 +21,8 @@ const Register = () => {
   
   const { register } = useAuth();
   const navigate = useNavigate();
+
+
 
   // Fetch MCPs on mount + whenever role is PICKUP_PARTNER
   useEffect(() => {
@@ -77,27 +80,41 @@ const Register = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-    
-    setIsSubmitting(true);
-    const userData = { ...formData };
-    if (userData.role !== 'PICKUP_PARTNER') delete userData.mcpId;
-    
-    try {
-      const result = await register(userData);
-      if (result.success) {
-        if (userData.role === 'MCP') {
-          // refresh MCP list so new MCP shows up in dropdown
-          await fetchMcpPartners();
-        }
-        navigate('/');
-      }
-    } finally {
-      setIsSubmitting(false);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validate()) return;
+
+  setIsSubmitting(true);
+
+  const userData = { ...formData };
+  if (userData.role !== "PICKUP_PARTNER") delete userData.mcpId;
+
+  try {
+    // Use the environment variable for the backend URL
+    const API_URL = import.meta.env.VITE_API_URL;
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Registration successful!");
+      navigate("/login"); // redirect to login page
+    } else {
+      alert(data.message || "Something went wrong");
     }
-  };
+  } catch (error) {
+    console.error("Register error:", error);
+    alert("Server not responding");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
 
   return (
     <div className="flex min-h-[calc(100vh-200px)] py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">

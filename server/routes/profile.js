@@ -7,5 +7,6 @@ router.use(verifyToken);
 
 router.get('/get', authorize, profileController.getProfile);        
 router.post('/edit', authorize, profileController.saveProfile);     
+router.post('/profile', upload.single("image"), saveProfile);
 
 module.exports = router;
