@@ -6,83 +6,54 @@ const Wallet = require('../models/Wallet');
 // Register new user (MCP or Pickup Partner)
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, role, mcpId, password } = req.body;
+    console.log("Incoming register request body:", req.body);
 
-    // Check if user exists
-    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+    const { name, email, phone, password, role } = req.body;
+
+    if (!name || !email || !password) {
+      console.error("Missing required fields:", req.body);
+      return res.status(400).json({ message: "Name, Email, and Password are required" });
+    }
+
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "User with this email or phone already exists",
-      });
+      console.error("User already exists:", email);
+      return res.status(400).json({ message: "User already exists" });
     }
 
-    // Validation for Pickup Partner
-    if (role === "PICKUP_PARTNER") {
-      if (!mcpId) {
-        return res.status(400).json({
-          success: false,
-          message: "MCP ID is required for Pickup Partner registration",
-        });
-      }
-      const mcp = await User.findById(mcpId);
-      if (!mcp || mcp.role !== "MCP") {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid MCP ID provided",
-        });
-      }
-    }
+    console.log("Hashing password...");
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // // Hash password
-    // const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = new User({
+    console.log("Creating new user...");
+    const newUser = new User({
       name,
       email,
-      password: hashedPassword,
       phone,
-      role,
-      ...(role === "PICKUP_PARTNER" && { mcpId }),
+      password: hashedPassword,
+      role: role || "MCP",
     });
 
-    await user.save();
+    await newUser.save();
+    console.log("User saved:", newUser.email);
 
-    // Create wallet
-    await new Wallet({ userId: user._id, balance: 0 }).save();
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET is missing from environment variables!");
+    }
 
-    // Generate JWT
-    const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "24h" }
-    );
+    const token = jwt.sign({ id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.status(201).json({
-      success: true,
       message: "User registered successfully",
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-        },
-        token,
-      },
+      token,
+      user: { id: newUser._id, email: newUser.email, role: newUser.role },
     });
   } catch (error) {
-    console.error("Registration error:", error, error.message, error.stack);
-    res.status(500).json({
-      success: false,
-      message: "Error registering user",
-      error: error.message,
-    });
+    console.error("Registration error:", error.message, error.stack);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 // Login user
 exports.login = async (req, res) => {
@@ -115,7 +86,7 @@ exports.login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    console.log("✅ Login successful:", email);
+    console.log(" Login successful:", email);
 
     res.json({
       success: true,
