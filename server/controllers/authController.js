@@ -6,7 +6,7 @@ const Wallet = require('../models/Wallet');
 // Register new user (MCP or Pickup Partner)
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, phone, role, mcpId } = req.body;
+    const { name, email, phone, role, mcpId } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
@@ -34,8 +34,8 @@ exports.register = async (req, res) => {
       }
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // // Hash password
+    // const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
     const user = new User({
@@ -85,7 +85,6 @@ exports.register = async (req, res) => {
 
 
 // Login user
-// Login user
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -127,7 +126,7 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('🔥 Login error:', error);
+    console.error('Login error:', error);
     res.status(500).json({ success: false, message: 'Error during login', error: error.message });
   }
 };
