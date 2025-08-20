@@ -61,14 +61,22 @@ const Login = () => {
 
     const result = await res.json();
 
-    if (res.ok && result.success) {
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-      navigate("/");
-    } else {
-      // Show error toast if API sends error
-      alert(result.message || "Login failed");
-    }
+  if (res.data.success) {
+  // If token is inside data
+  const token = res.data.data?.token || res.data.token;
+  const user = res.data.data?.user || res.data.user;
+
+  if (!token || !user) {
+    alert("Login failed: Missing token or user data");
+    return;
+  }
+
+  localStorage.setItem("token", token);
+  localStorage.setItem("user", JSON.stringify(user));
+  navigate("/dashboard");
+  } else {
+  alert(res.data.message || "Invalid credentials");
+  }
   } catch (error) {
     console.error("Login error:", error);
     alert("Server error, please try again later");
