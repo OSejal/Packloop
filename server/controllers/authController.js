@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Wallet = require('../models/Wallet');
 
-// Register new user (MCP or Pickup Partner)
+// Register (MCP or Pickup Partner)
 exports.register = async (req, res) => {
   try {
     console.log("Incoming register request body:", req.body);
@@ -28,7 +28,7 @@ exports.register = async (req, res) => {
       name,
       email,
       phone,
-      password, // let pre-save hook handle hashing
+      password,
       role: role || "MCP",
       mcpId,
       commissionRate
@@ -44,7 +44,10 @@ exports.register = async (req, res) => {
       success: true,
       message: "User registered successfully",
       token,
-      user: { id: newUser._id, email: newUser.email, role: newUser.role }
+      data: {
+        user: { id: newUser._id, email: newUser.email, role: newUser.role },
+        token
+      }
     });
 
   } catch (error) {
