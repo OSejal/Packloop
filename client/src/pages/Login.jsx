@@ -62,8 +62,8 @@ const Login = () => {
     const result = await res.json();
 
     if (res.ok && result.success) {
-        localStorage.setItem("token", res.data.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.data.user));
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
       navigate("/");
     } else {
       // Show error toast if API sends error
