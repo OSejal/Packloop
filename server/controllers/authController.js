@@ -8,52 +8,51 @@ exports.register = async (req, res) => {
   try {
     console.log("Incoming register request body:", req.body);
 
-    const { name, email, phone, password, role } = req.body;
+    const { name, email, phone, password, role, mcpId, commissionRate } = req.body;
 
-    if (!name || !email || !password) {
-      console.error("Missing required fields:", req.body);
-      return res.status(400).json({ message: "Name, Email, and Password are required" });
+    if (!name || !email || !password || !phone) {
+      return res.status(400).json({ message: "Name, Email, Phone, and Password are required" });
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.error("User already exists:", email);
       return res.status(400).json({ message: "User already exists" });
     }
 
-    console.log("Hashing password...");
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (role === "PICKUP_PARTNER") {
+      if (!mcpId) return res.status(400).json({ message: "mcpId is required for Pickup Partner" });
+      if (!commissionRate) return res.status(400).json({ message: "commissionRate is required for Pickup Partner" });
+    }
 
-    console.log("Creating new user...");
     const newUser = new User({
       name,
       email,
       phone,
-      password: hashedPassword,
+      password, // let pre-save hook handle hashing
       role: role || "MCP",
+      mcpId,
+      commissionRate
     });
 
     await newUser.save();
-    console.log("User saved:", newUser.email);
-
-    if (!process.env.JWT_SECRET) {
-      throw new Error("JWT_SECRET is missing from environment variables!");
-    }
 
     const token = jwt.sign({ id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
     res.status(201).json({
+      success: true,
       message: "User registered successfully",
       token,
-      user: { id: newUser._id, email: newUser.email, role: newUser.role },
+      user: { id: newUser._id, email: newUser.email, role: newUser.role }
     });
+
   } catch (error) {
-    console.error("Registration error:", error.message, error.stack);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Registration error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // Login user
 exports.login = async (req, res) => {
