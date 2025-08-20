@@ -6,7 +6,7 @@ const Wallet = require('../models/Wallet');
 // Register new user (MCP or Pickup Partner)
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, role, mcpId } = req.body;
+    const { name, email, phone, role, mcpId, password } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
