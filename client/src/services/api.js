@@ -71,19 +71,19 @@ api.interceptors.response.use(
 // Authentication services
 export const authService = {
   // Register user
-  register: (userData) => api.post('/auth/register', userData),
+  register: (userData) => api.post('/api/auth/register', userData),
   
   // Login user
-  login: (credentials) => api.post('/auth/login', credentials),
+  login: (credentials) => api.post('/api/auth/login', credentials),
   
   // Get user profile
-  getProfile: () => api.get('/auth/profile'),
+  getProfile: () => api.get('/api/auth/profile'),
   
   // Update user profile
-  updateProfile: (data) => api.put('/auth/profile', data),
+  updateProfile: (data) => api.put('/api/auth/profile', data),
   
   // Change password
-  changePassword: (data) => api.put('/auth/change-password', data),
+  changePassword: (data) => api.put('/api/auth/change-password', data),
 };
 
 // Partner services
