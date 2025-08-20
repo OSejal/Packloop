@@ -46,42 +46,27 @@ const Login = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-
   const handleSubmit = async (e) => {
   e.preventDefault();
   if (!validate()) return;
-
+  
   setIsSubmitting(true);
 
   try {
-    console.log("Submitting login:", formData);
-
-    const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/auth/login`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        //  Make sure email & password keys match backend expectations
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      }
-    );
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
 
     const result = await res.json();
 
-    console.log("Login response:", result);
-
     if (res.ok && result.success) {
-      // Store token in localStorage (or cookie)
-      localStorage.setItem("token", result.token);
-
-      // Redirect
+        localStorage.setItem("token", res.data.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.data.user));
       navigate("/");
     } else {
+      // Show error toast if API sends error
       alert(result.message || "Login failed");
     }
   } catch (error) {
