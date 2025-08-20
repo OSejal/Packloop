@@ -61,10 +61,10 @@ const Login = () => {
 
     const result = await res.json();
 
-  if (res.data.success) {
+  if (result.success) {
   // If token is inside data
-  const token = res.data.data?.token || res.data.token;
-  const user = res.data.data?.user || res.data.user;
+  const token = result.data?.token || result.token;
+  const user = result.data?.user || result.user;
 
   if (!token || !user) {
     alert("Login failed: Missing token or user data");
@@ -73,9 +73,10 @@ const Login = () => {
 
   localStorage.setItem("token", token);
   localStorage.setItem("user", JSON.stringify(user));
+  
   navigate("/dashboard");
   } else {
-  alert(res.data.message || "Invalid credentials");
+  alert(result.message || "Invalid credentials");
   }
   } catch (error) {
     console.error("Login error:", error);
