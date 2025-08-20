@@ -85,66 +85,53 @@ exports.register = async (req, res) => {
 
 
 // Login user
+// Login user
 exports.login = async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
+    console.log("Login attempt with:", email);
 
-        // Find user by email
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid credentials'
-            });
-        }
-
-        // Check password
-        const isPasswordValid = await user.comparePassword(password);
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid credentials'
-            });
-        }
-
-        // Check if user is active
-        if (user.status !== 'ACTIVE') {
-            return res.status(403).json({
-                success: false,
-                message: 'Account is not active'
-            });
-        }
-
-        // Generate JWT token
-        const token = jwt.sign(
-            { userId: user._id, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        res.json({
-            success: true,
-            message: 'Login successful',
-            data: {
-                user: {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    phone: user.phone,
-                    role: user.role
-                },
-                token
-            }
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error during login',
-            error: error.message
-        });
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log("No user found with email:", email);
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
+
+    const isPasswordValid = await user.comparePassword(password);
+    console.log("Password valid:", isPasswordValid);
+
+    if (!isPasswordValid) {
+      console.log("Wrong password for:", email);
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    if (user.status !== 'ACTIVE') {
+      console.log("Account not active:", email);
+      return res.status(403).json({ success: false, message: 'Account is not active' });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    console.log("✅ Login successful:", email);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
+        token
+      }
+    });
+  } catch (error) {
+    console.error('🔥 Login error:', error);
+    res.status(500).json({ success: false, message: 'Error during login', error: error.message });
+  }
 };
+
 
 // Get current user profile
 exports.getProfile = async (req, res) => {

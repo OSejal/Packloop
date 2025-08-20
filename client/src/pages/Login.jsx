@@ -28,7 +28,7 @@ const Login = () => {
       });
     }
   };
-
+  
   const validate = () => {
     const newErrors = {};
     
@@ -49,7 +49,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
   e.preventDefault();
   if (!validate()) return;
-
+  
   setIsSubmitting(true);
 
   try {
