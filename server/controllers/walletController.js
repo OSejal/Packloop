@@ -89,10 +89,7 @@ exports.getWalletDetails = async (req, res) => {
         const wallet = await Wallet.findOne({ userId: req.user.userId });
         
         if (!wallet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Wallet not found'
-            });
+          wallet = await Wallet.create({ userId: req.user.userId });
         }
 
         // Get recent transactions (last 10)
@@ -231,8 +228,8 @@ exports.transferFunds = async (req, res) => {
         }
 
         // Get both wallets
-        const mcpWallet = await Wallet.findOne({ userId: mcp._id });
-        const partnerWallet = await Wallet.findOne({ userId: partnerId });
+        const mcpWallet = await Wallet.findOne({ userId: mcp._id }) || await Wallet.create({ userId: mcp._id });
+        const partnerWallet = await Wallet.findOne({ userId: partnerId }) || await Wallet.create({ userId: partnerId });
 
         if (!mcpWallet || !partnerWallet) {
             throw new Error('Wallet not found');
@@ -348,11 +345,8 @@ exports.getTransactionHistory = async (req, res) => {
     let filter = { userId };
 
     if (startDate && endDate) {
-      filter.date = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
-    }
+      filter.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+    } 
 
     if (type) {
       filter.type = type;
