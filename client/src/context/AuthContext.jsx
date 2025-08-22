@@ -9,114 +9,63 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // On mount, check if token exists
   useEffect(() => {
-    // Check if user is already logged in
     const token = localStorage.getItem('token');
-    if (token) {
-      fetchUserProfile();
-    } else {
-      setLoading(false);
-    }
+    if (token) fetchUserProfile();
+    else setLoading(false);
   }, []);
 
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
-      const response = await authService.getProfile();
-      setUser(response.data.data.user);
+      const res = await authService.getProfile();
+      setUser(res.data.user);
       setIsAuthenticated(true);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error fetching profile:', error);
       localStorage.removeItem('token');
       setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }
   };
-  
-  // Function to refresh token if needed
-  const refreshTokenIfNeeded = async () => {
+
+  const login = async (credentials) => {
     try {
-      // Check if token is present
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.log('No token available to refresh');
-        return false;
+      const res = await authService.login(credentials);
+
+      if (res.success) {
+        const { token, user } = res.data; // ✅ token & user from API response
+        localStorage.setItem('token', token); // store token
+        setUser(user);
+        setIsAuthenticated(true);
+        toast.success('Login successful');
       }
-      
-      // Simple check if user profile can be fetched
-      await authService.getProfile();
-      
-      return true;
+
+      return res;
     } catch (error) {
-      console.error('Token refresh needed:', error);
-      
-      // Try to login again with stored credentials
-      const storedEmail = localStorage.getItem('userEmail');
-      const storedPassword = localStorage.getItem('userPassword');
-      
-      if (storedEmail && storedPassword) {
-        try {
-          const result = await login({
-            email: storedEmail,
-            password: storedPassword
-          });
-          
-          return result.success;
-        } catch (loginError) {
-          console.error('Auto login failed:', loginError);
-          logout();
-          return false;
-        }
-      } else {
-        logout();
-        return false;
-      }
+      console.error('Login error:', error);
+      toast.error('Login failed');
+      return { success: false, error: error.message };
     }
   };
 
-const login = async (credentials) => {
-  try {
-    const data = await authService.login(credentials);
-    if (data.success) {
-      const { token, user } = data;
-      
-      // Save both token + user
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      setUser(user);
-      setIsAuthenticated(true);
-      toast.success("Login successful");
-    }
-    return data;
-  } catch (error) {
-    console.error("Login error:", error);
-    toast.error("Login failed");
-    return { success: false, error: error.message };
-  }
-};
-
-
   const register = async (userData) => {
     try {
-      setLoading(true);
-      const response = await authService.register(userData);
-      const { token, user } = response.data.data;
-      
-      localStorage.setItem('token', token);
-      setUser(user);
-      setIsAuthenticated(true);
-      toast.success('Registration successful!');
-      return { success: true };
+      const res = await authService.register(userData);
+      if (res.success) {
+        const { token, user } = res.data;
+        localStorage.setItem('token', token);
+        setUser(user);
+        setIsAuthenticated(true);
+        toast.success('Registration successful');
+      }
+      return res;
     } catch (error) {
+      console.error('Registration error:', error);
       toast.error(error.response?.data?.message || 'Registration failed');
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Registration failed' 
-      };
-    } finally {
-      setLoading(false);
+      return { success: false, error: error.message };
     }
   };
 
@@ -127,54 +76,9 @@ const login = async (credentials) => {
     toast.success('Logged out successfully');
   };
 
-  const updateProfile = async (data) => {
-    try {
-      setLoading(true);
-      const response = await authService.updateProfile(data);
-      setUser(response.data.data.user);
-      toast.success('Profile updated successfully');
-      return { success: true };
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update profile');
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update profile' 
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const changePassword = async (data) => {
-    try {
-      setLoading(true);
-      await authService.changePassword(data);
-      toast.success('Password changed successfully');
-      return { success: true };
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to change password');
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to change password' 
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        isAuthenticated,
-        login,
-        register,
-        logout,
-        updateProfile,
-        changePassword,
-        refreshTokenIfNeeded,
-      }}
+      value={{ user, loading, isAuthenticated, login, register, logout, fetchUserProfile }}
     >
       {children}
     </AuthContext.Provider>
@@ -183,10 +87,6 @@ const login = async (credentials) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 };
-
-export default AuthContext; 
