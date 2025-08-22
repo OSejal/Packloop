@@ -71,14 +71,13 @@ const Home = () => {
 
   return (
     <div className="w-full">
-      <div
-        className="relative isolate overflow-hidden sm:py-24 lg:py-32 rounded-lg"
-        style={{
-          backgroundImage: "url('/delivery.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
+      <div className="relative isolate overflow-hidden sm:py-24 lg:py-32 rounded-lg">
+        <img
+          src="/delivery.jpg"
+          alt="Delivery"
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+        />
       {/* Overlay (optional for better text readability) */}
       <div className="absolute inset-0 bg-black/40"></div>
 
