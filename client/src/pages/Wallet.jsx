@@ -16,6 +16,16 @@ import { useAuth } from '../context/AuthContext';
 
 const DEFAULT_CURRENCY = import.meta.env.VITE_DEFAULT_CURRENCY || 'INR';
 
+// Centralized error logger
+const logError = (context, error) => {
+  console.error(`[Wallet Error] - ${context}`, {
+    message: error?.message,
+    stack: error?.stack,
+    name: error?.name,
+    responseData: error?.response?.data || null
+  });
+};
+
 const Wallet = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -38,121 +48,87 @@ const Wallet = () => {
   });
 
   // Form states
-  const [addFundsForm, setAddFundsForm] = useState({
-    amount: '',
-    paymentMethod: 'UPI'
-  });
-
+  const [addFundsForm, setAddFundsForm] = useState({ amount: '', paymentMethod: 'UPI' });
   const [withdrawForm, setWithdrawForm] = useState({
     amount: '',
-    bankDetails: {
-      accountNumber: '',
-      ifscCode: '',
-      accountHolderName: ''
-    }
+    bankDetails: { accountNumber: '', ifscCode: '', accountHolderName: '' }
   });
 
   const [responseId, setResponseId] = useState("");
   const [responseState, setResponseState] = useState([]);
-  
-    const loadScript = (src) => {
+
+  // Load Razorpay script
+  const loadScript = (src) => {
     return new Promise((resolve) => {
       const script = document.createElement("script");
-
       script.src = src;
-
-      script.onload = () => {
-        resolve(true);
-      };
-      script.onerror = () => {
-        resolve(false);
-      };
-
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
       document.body.appendChild(script);
     });
   };
 
-  
-    const createRazorpayOrder = (amount) => {
-       let data = JSON.stringify({
-        amount: amount,
-        currency: "INR"
-      })
-       
-      let config = {
-        method: "post",
-        maxBodyLength: Infinity,
-        url: "http://localhost:4000/api/payments/orders",
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        data: data
-      }
-  
-      axios.request(config)
-      .then((response) => {
-        console.log(JSON.stringify(response.data))
-        handleRazorpayScreen(response.data.amount)
-      })
-      .catch((error) => {
-        console.log("error at", error)
-      })
+  // Create Razorpay order
+  const createRazorpayOrder = async (amount) => {
+    try {
+      const data = { amount, currency: "INR" };
+      const response = await axios.post("http://localhost:4000/api/payments/orders", data);
+      handleRazorpayScreen(response.data.amount);
+    } catch (error) {
+      logError('createRazorpayOrder', error);
+      toast.error('Failed to initiate payment');
     }
+  };
 
-    const handleRazorpayScreen = async(amount) => {
-      const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js")
-
+  // Open Razorpay screen
+  const handleRazorpayScreen = async (amount) => {
+    try {
+      const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
       if (!res) {
-        alert("Some error at razorpay screen loading")
+        const error = new Error('Failed to load Razorpay checkout script');
+        logError('handleRazorpayScreen', error);
+        alert(error.message);
         return;
       }
 
       const options = {
         key: 'rzp_test_R5IPYCVzJiCP0V',
-        amount: amount,
+        amount,
         currency: 'INR',
         name: "Sejal Sinha",
         description: "payment to Sejal Sinha",
-        handler: function (response){
-          setResponseId(response.razorpay_payment_id)
-        },
-        prefill: {
-          name: "Sejal Sinha",
-          email: "sejalsinha322@gmail.com"
-        },
-        theme: {
-          color: "#F4C430"
-        }
-      }
+        handler: function (response) { setResponseId(response.razorpay_payment_id); },
+        prefill: { name: "Sejal Sinha", email: "sejalsinha322@gmail.com" },
+        theme: { color: "#F4C430" }
+      };
 
-      const paymentObject = new window.Razorpay(options)
-      paymentObject.open()
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+    } catch (error) {
+      logError('handleRazorpayScreen', error);
+      toast.error('Payment initialization failed');
     }
+  };
 
-    const paymentFetch = (e) => {
-      e.preventDefault();
-
+  const paymentFetch = async (e) => {
+    e.preventDefault();
+    try {
       const paymentId = e.target.paymentId.value;
-
-      axios.get(`http://localhost:4000/api/payments/${paymentId}`)
-      .then((response) => {
-        console.log(response.data);
-        setResponseState(response.data)
-      })
-      .catch((error) => {
-         console.log("error occurs", error)
-      })
+      const response = await axios.get(`http://localhost:4000/api/payments/${paymentId}`);
+      setResponseState(response.data);
+    } catch (error) {
+      logError('paymentFetch', error);
+      toast.error('Failed to fetch payment details');
     }
+  };
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // Check if user is authenticated
+
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('No authentication token found');
         toast.error('Please login to access your wallet');
         navigate('/login');
         return;
@@ -162,26 +138,17 @@ const Wallet = () => {
         walletService.getWallet(),
         walletService.getTransactions(filters)
       ]);
-      
-      console.log('Transactions Response:', transactionsResponse);
 
-      if (walletResponse.data?.success) {
-        setWalletData(walletResponse.data.data || { balance: 0 });
-      } else {
-        setError('Failed to load wallet data');
-        toast.error('Failed to load wallet data');
-      }
+      if (walletResponse.data?.success) setWalletData(walletResponse.data.data || { balance: 0 });
+      else logError('Wallet fetch failed', walletResponse.data);
 
-      if (Array.isArray(transactionsResponse.data?.transactions)) {
-        setTransactions(transactionsResponse.data.transactions);
-      } else {
-        console.error('Invalid transactions response:', transactionsResponse);
-        setTransactions([]);
-      }
+      if (Array.isArray(transactionsResponse.data?.transactions)) setTransactions(transactionsResponse.data.transactions);
+      else logError('Transactions fetch invalid', transactionsResponse.data);
+
     } catch (error) {
-      console.error('Error in fetchData:', error);
+      logError('fetchData', error);
       if (error.response?.status === 401) {
-        toast.error('Your session has expired. Please login again.');
+        toast.error('Session expired. Please login again.');
         navigate('/login');
       } else {
         setError('Failed to load wallet data');
@@ -193,49 +160,32 @@ const Wallet = () => {
     }
   }, [filters, navigate]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const validateAmount = (amount) => {
-    const numAmount = Number(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      throw new Error('Please enter a valid amount greater than 0');
-    }
-    if (numAmount > 100000) {
-      throw new Error('Amount cannot exceed ₹1,00,000');
-    }
+    const num = Number(amount);
+    if (isNaN(num) || num <= 0) throw new Error('Please enter a valid amount greater than 0');
+    if (num > 100000) throw new Error('Amount cannot exceed ₹1,00,000');
     return true;
   };
 
   const handleAddFunds = async (e) => {
     e.preventDefault();
     try {
-      // Check if user is MCP
-      if (user.role !== 'MCP') {
-        toast.error('Only MCP users can add funds');
-        return;
-      }
-
+      if (user.role !== 'MCP') return toast.error('Only MCP users can add funds');
       setIsSubmitting(true);
       validateAmount(addFundsForm.amount);
-      
       const response = await walletService.addFunds(addFundsForm);
-      console.log('Add funds response:', response);
-      
       if (response.data?.success) {
         toast.success('Funds added successfully');
         setShowAddFundsModal(false);
         setAddFundsForm({ amount: '', paymentMethod: 'UPI' });
         await fetchData();
-      } else {
-        throw new Error(response.data?.message || 'Failed to add funds');
-      }
+      } else throw new Error(response.data?.message || 'Failed to add funds');
     } catch (error) {
+      logError('handleAddFunds', error);
       toast.error(error.message || 'Failed to add funds');
-    } finally {
-      setIsSubmitting(false);
-    }
+    } finally { setIsSubmitting(false); }
   };
 
   const handleWithdraw = async (e) => {
@@ -243,63 +193,36 @@ const Wallet = () => {
     try {
       setIsSubmitting(true);
       validateAmount(withdrawForm.amount);
-      
-      if (Number(withdrawForm.amount) > walletData.balance) {
-        throw new Error('Insufficient balance');
-      }
-      
+      if (Number(withdrawForm.amount) > walletData.balance) throw new Error('Insufficient balance');
       const response = await walletService.withdrawFunds(withdrawForm);
-      console.log('Withdraw response:', response);
-      
       if (response.data?.success) {
         toast.success('Withdrawal request submitted successfully');
         setShowWithdrawModal(false);
-        setWithdrawForm({
-          amount: '',
-          bankDetails: {
-            accountNumber: '',
-            ifscCode: '',
-            accountHolderName: ''
-          }
-        });
+        setWithdrawForm({ amount: '', bankDetails: { accountNumber: '', ifscCode: '', accountHolderName: '' } });
         await fetchData();
-      } else {
-        throw new Error(response.data?.message || 'Failed to process withdrawal');
-      }
+      } else throw new Error(response.data?.message || 'Failed to process withdrawal');
     } catch (error) {
+      logError('handleWithdraw', error);
       toast.error(error.message || 'Failed to process withdrawal');
-    } finally {
-      setIsSubmitting(false);
-    }
+    } finally { setIsSubmitting(false); }
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value,
-      page: key === 'page' ? value : 1 // Reset page only when changing other filters
-    }));
+    setFilters(prev => ({ ...prev, [key]: value, page: key === 'page' ? value : 1 }));
   };
 
   const formatDate = (dateString) => {
     try {
-      const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-      return new Date(dateString).toLocaleDateString('en-US', options);
-    } catch (error) {
-      return 'Invalid Date';
-    }
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    } catch { return 'Invalid Date'; }
   };
 
   const formatAmount = (amount) => {
     try {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: DEFAULT_CURRENCY,
-        minimumFractionDigits: 2
-      }).format(amount || 0);
-    } catch (error) {
-      return `₹0.00`;
-    }
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: DEFAULT_CURRENCY, minimumFractionDigits: 2 }).format(amount || 0);
+    } catch { return `₹0.00`; }
   };
 
   const getTransactionStatusBadge = (status) => {
@@ -309,68 +232,23 @@ const Wallet = () => {
       'failed': 'bg-red-100 text-red-800',
       'processing': 'bg-blue-100 text-blue-800'
     };
-    
     return statusMap[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
   };
 
   const getTransactionIcon = (type) => {
-    if (type?.toLowerCase() === 'credit') {
-      return <FiArrowUp className="w-4 h-4 text-green-500" />;
-    } else if (type?.toLowerCase() === 'debit') {
-      return <FiArrowDown className="w-4 h-4 text-red-500" />;
-    } else {
-      return <FiClock className="w-4 h-4 text-gray-500" />;
-    }
+    if (type?.toLowerCase() === 'credit') return <FiArrowUp className="w-4 h-4 text-green-500" />;
+    if (type?.toLowerCase() === 'debit') return <FiArrowDown className="w-4 h-4 text-red-500" />;
+    return <FiClock className="w-4 h-4 text-gray-500" />;
   };
 
-  if (isLoading) {
-    return (
-      <div className="h-64 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+  if (isLoading) return <div className="h-64 flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
 
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-500">{error}</p>
-        <Button 
-          onClick={() => {
-            setError(null);
-            setIsLoading(true);
-            const fetchData = async () => {
-              try {
-                const [walletResponse, transactionsResponse] = await Promise.all([
-                  walletService.getWallet(),
-                  walletService.getTransactions(filters)
-                ]);
-                
-                if (walletResponse.data?.success) {
-                  setWalletData(walletResponse.data.data || { balance: 0 });
-                }
-                
-                if (transactionsResponse.data?.success) {
-                  setTransactions(transactionsResponse.data.transactions || []);
-                }
-              } catch (error) {
-                // console.error('Error fetching data:', error);
-                setError('Failed to load wallet data');
-                toast.error('Failed to load wallet data');
-              } finally {
-                setIsLoading(false);
-              }
-            };
-            fetchData();
-          }} 
-          variant="primary" 
-          className="mt-4"
-        >
-          Retry
-        </Button>
-      </div>
-    );
-  }
+  if (error) return (
+    <div className="text-center py-12">
+      <p className="text-red-500">{error}</p>
+      <Button onClick={() => { setError(null); setIsLoading(true); fetchData(); }} variant="primary" className="mt-4">Retry</Button>
+    </div>
+  );
 
   return (
     <div className="container mx-auto max-w-5xl p-4">
