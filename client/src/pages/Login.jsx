@@ -47,44 +47,28 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validate()) return;
-  
-  setIsSubmitting(true);
+    e.preventDefault();
+    if (!validate()) return;
 
-  try {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
+    setIsSubmitting(true);
 
-    const result = await res.json();
+    try {
+      // ✅ use context login instead of manual fetch
+      const result = await login(formData);
 
-  if (result.success) {
-  // If token is inside data
-  const token = result.data?.token || result.token;
-  const user = result.data?.user || result.user;
+      if (result.success) {
+        navigate("/");
+      } else {
+        alert(result.error || "Invalid credentials");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Server error, please try again later");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  if (!token || !user) {
-    alert("Login failed: Missing token or user data");
-    return;
-  }
-
-  localStorage.setItem("token", token);
-  localStorage.setItem("user", JSON.stringify(user));
-
-  navigate("/");
-  } else {
-  alert(result.message || "Invalid credentials");
-  }
-  } catch (error) {
-    console.error("Login error:", error);
-    alert("Server error, please try again later");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
 
 
   return (

@@ -75,33 +75,28 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (credentials) => {
-    try {
-      setLoading(true);
-      const response = await authService.login(credentials);
-      const { token, user } = response.data.data;
+const login = async (credentials) => {
+  try {
+    const data = await authService.login(credentials);
+    if (data.success) {
+      const { token, user } = data;
       
-      localStorage.setItem('token', token);
-      // Optionally store credentials for token refresh (secure in a real app)
-      if (credentials.rememberMe) {
-        localStorage.setItem('userEmail', credentials.email);
-        localStorage.setItem('userPassword', credentials.password);
-      }
-      
+      // Save both token + user
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
       setUser(user);
       setIsAuthenticated(true);
-      toast.success('Login successful!');
-      return { success: true };
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Login failed' 
-      };
-    } finally {
-      setLoading(false);
+      toast.success("Login successful");
     }
-  };
+    return data;
+  } catch (error) {
+    console.error("Login error:", error);
+    toast.error("Login failed");
+    return { success: false, error: error.message };
+  }
+};
+
 
   const register = async (userData) => {
     try {
