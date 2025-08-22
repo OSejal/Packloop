@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
       const res = await authService.login(credentials);
 
       if (res.success) {
-        const { token, user } = res.data; // ✅ token & user from API response
+        const { token, user } = res.data; 
         localStorage.setItem('token', token); // store token
         setUser(user);
         setIsAuthenticated(true);

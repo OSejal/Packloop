@@ -13,6 +13,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 const DEFAULT_CURRENCY = import.meta.env.VITE_DEFAULT_CURRENCY || 'INR';
 
@@ -70,15 +71,15 @@ const Wallet = () => {
 
   // Create Razorpay order
   const createRazorpayOrder = async (amount) => {
-    try {
-      const data = { amount, currency: "INR" };
-      const response = await axios.post("https://www.packloop.online/api/payments/orders", data);
-      handleRazorpayScreen(response.data.amount);
-    } catch (error) {
-      logError('createRazorpayOrder', error);
-      toast.error('Failed to initiate payment');
-    }
-  };
+  try {
+    const data = { amount, currency: "INR" };
+    const response = await api.post('/api/payments/orders', data);  
+    handleRazorpayScreen(response.data.amount);
+  } catch (error) {
+    logError('createRazorpayOrder', error);
+    toast.error('Failed to initiate payment');
+  }
+};
 
   // Open Razorpay screen
   const handleRazorpayScreen = async (amount) => {
