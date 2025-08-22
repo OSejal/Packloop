@@ -85,34 +85,32 @@ exports.getPartnerTransactions = async (req, res) => {
 
 // Get wallet balance and recent transactions
 exports.getWalletDetails = async (req, res) => {
-    try {
-        const wallet = await Wallet.findOne({ userId: req.user.userId });
-        
-        if (!wallet) {
-          wallet = await Wallet.create({ userId: req.user.userId });
-        }
+  try {
+    const wallet = await Wallet.findOne({ userId: req.user.userId }) 
+      || await Wallet.create({ userId: req.user.userId });
 
-        // Get recent transactions (last 10)
-        const recentTransactions = wallet.transactions
-            .sort((a, b) => b.createdAt - a.createdAt)
-            .slice(0, 10);
+    // Fetch recent transactions from Transaction collection
+    const recentTransactions = await Transaction.find({ userId: req.user.userId })
+      .sort({ createdAt: -1 })
+      .limit(10);
 
-        res.json({
-            success: true,
-            data: {
-                balance: wallet.balance,
-                recentTransactions
-            }
-        });
-    } catch (error) {
-        console.error('Get wallet details error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching wallet details',
-            error: error.message
-        });
-    }
+    res.json({
+      success: true,
+      data: {
+        balance: wallet.balance,
+        recentTransactions
+      }
+    });
+  } catch (error) {
+    console.error('Get wallet details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching wallet details',
+      error: error.message
+    });
+  }
 };
+
 
 // Add funds to wallet
 exports.addFunds = async (req, res) => {
