@@ -72,7 +72,7 @@ const Wallet = () => {
   const createRazorpayOrder = async (amount) => {
     try {
       const data = { amount, currency: "INR" };
-      const response = await axios.post("http://localhost:4000/api/payments/orders", data);
+      const response = await axios.post("https://www.packloop.online/api/payments/orders", data);
       handleRazorpayScreen(response.data.amount);
     } catch (error) {
       logError('createRazorpayOrder', error);
@@ -110,17 +110,17 @@ const Wallet = () => {
     }
   };
 
-  const paymentFetch = async (e) => {
-    e.preventDefault();
-    try {
-      const paymentId = e.target.paymentId.value;
-      const response = await axios.get(`http://localhost:4000/api/payments/${paymentId}`);
-      setResponseState(response.data);
-    } catch (error) {
-      logError('paymentFetch', error);
-      toast.error('Failed to fetch payment details');
-    }
-  };
+  // const paymentFetch = async (e) => {
+  //   e.preventDefault();
+  //   try {
+  //     const paymentId = e.target.paymentId.value;
+  //     const response = await axios.get(`http://localhost:4000/api/payments/${paymentId}`);
+  //     setResponseState(response.data);
+  //   } catch (error) {
+  //     logError('paymentFetch', error);
+  //     toast.error('Failed to fetch payment details');
+  //   }
+  // };
 
   const fetchData = useCallback(async () => {
     try {
