@@ -47,27 +47,50 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
+  e.preventDefault();
+  if (!validate()) return;
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    try {
-      // ✅ use context login instead of manual fetch
-      const result = await login(formData);
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+      // Note: fetch doesn’t support timeout directly; use AbortController
+      signal: new AbortController().signal
+    });
 
-      if (result.success) {
-        navigate("/");
-      } else {
-        alert(result.error || "Invalid credentials");
+    const result = await res.json();
+
+    if (result.success) {
+      const token = result.data?.token || result.token;
+      const user = result.data?.user || result.user;
+
+      if (!token || !user) {
+        alert("Login failed: Missing token or user data");
+        return;
       }
-    } catch (error) {
-      console.error("Login error:", error);
-      alert("Server error, please try again later");
-    } finally {
-      setIsSubmitting(false);
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      navigate("/"); // redirect after login
+    } else {
+      alert(result.message || "Invalid credentials");
     }
-  };
+  } catch (error) {
+    if (error.name === "AbortError") {
+      alert("Request timed out. Please try again.");
+    } else {
+      console.error("Login error:", error);
+      alert("Network error or server not responding. Try again later.");
+    }
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
 
 
