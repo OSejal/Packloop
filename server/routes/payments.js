@@ -14,24 +14,28 @@ const razorpay = new Razorpay({
 router.post("/orders", async (req, res) => {
   try {
     const { amount, currency } = req.body;
+    console.log("Creating Razorpay order with:", amount, currency);
 
     const options = {
-      amount: amount * 100, // rupees → paise
+      amount: amount * 100,
       currency: currency || "INR",
       receipt: `receipt_${Date.now()}`
     };
 
     const response = await razorpay.orders.create(options);
+    console.log("Razorpay order response:", response);
+
     res.json({
       order_id: response.id,
       currency: response.currency,
       amount: response.amount
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error creating Razorpay order:", error);
     res.status(500).send("Error creating Razorpay order");
   }
 });
+
 
 
 router.get("/payment/:paymentId", async(req, res) => {
