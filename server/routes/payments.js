@@ -2,7 +2,7 @@
 const express = require ("express");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
-const { verifyPayment } = require("../controllers/paymentController");
+const paymentController = require("../controllers/paymentController");
 const router = express.Router();
 const { verifyToken } = require("../middleware/auth");
 
@@ -66,7 +66,7 @@ router.get("/payment/:paymentId", async(req, res) => {
 })
 
 // Verify payment signature
-router.post("/verify", verifyToken, verifyPayment);
+router.post("/verify", verifyToken, paymentController.verifyPayment);
 
 module.exports = router;
 
