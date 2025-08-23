@@ -116,7 +116,7 @@ const Wallet = () => {
     paymentObject.open();
 
   } catch (error) {
-    console.error("handleRazorpayPayment error:", error);
+    console.error("handleRazorpayScreen error:", error);
     toast.error(error.message || "Payment initialization failed");
   } finally {
     setIsSubmitting(false);
