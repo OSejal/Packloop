@@ -66,7 +66,7 @@ router.get("/payment/:paymentId", async(req, res) => {
 })
 
 // Verify payment signature
-router.post("/verify",  paymentController.verifyPayment);
+router.post("/verify", verifyToken,  paymentController.verifyPayment);
 
 module.exports = router;
 

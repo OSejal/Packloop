@@ -22,7 +22,7 @@ exports.verifyPayment = async (req, res) => {
 
     // Step 3: Update wallet (create if not exists)
     const wallet = await Wallet.findOneAndUpdate(
-      { userId },
+      {userId: req.user.id },
       { $inc: { balance: creditAmount } },
       { new: true, upsert: true }
     );
