@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from "axios";
 import { FiCreditCard, FiArrowUp, FiArrowDown, FiClock, FiFilter } from 'react-icons/fi';
 import { walletService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -17,7 +16,6 @@ import api from '../services/api';
 
 const DEFAULT_CURRENCY = import.meta.env.VITE_DEFAULT_CURRENCY || 'INR';
 
-// Centralized error logger
 const logError = (context, error) => {
   console.error(`[Wallet Error] - ${context}`, {
     message: error?.message,
@@ -48,17 +46,12 @@ const Wallet = () => {
     limit: 10
   });
 
-  // Form states
   const [addFundsForm, setAddFundsForm] = useState({ amount: '', paymentMethod: 'UPI' });
   const [withdrawForm, setWithdrawForm] = useState({
     amount: '',
     bankDetails: { accountNumber: '', ifscCode: '', accountHolderName: '' }
   });
 
-  const [responseId, setResponseId] = useState("");
-  const [responseState, setResponseState] = useState([]);
-
-  // Load Razorpay script
   const loadScript = (src) => {
     return new Promise((resolve) => {
       const script = document.createElement("script");
@@ -82,34 +75,51 @@ const Wallet = () => {
 };
 
   // Open Razorpay screen
-  const handleRazorpayScreen = async (amount) => {
-    try {
-      const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
-      if (!res) {
-        const error = new Error('Failed to load Razorpay checkout script');
-        logError('handleRazorpayScreen', error);
-        alert(error.message);
-        return;
-      }
-
-      const options = {
-        key: 'rzp_test_R5IPYCVzJiCP0V',
-        amount,
-        currency: 'INR',
-        name: "Sejal Sinha",
-        description: "payment to Sejal Sinha",
-        handler: function (response) { setResponseId(response.razorpay_payment_id); },
-        prefill: { name: "Sejal Sinha", email: "sejalsinha322@gmail.com" },
-        theme: { color: "#F4C430" }
-      };
-
-      const paymentObject = new window.Razorpay(options);
-      paymentObject.open();
-    } catch (error) {
-      logError('handleRazorpayScreen', error);
-      toast.error('Payment initialization failed');
+  const handleRazorpayScreen = async (orderData) => {
+  try {
+    const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+    if (!res) {
+      throw new Error('Failed to load Razorpay checkout script');
     }
-  };
+
+    const options = {
+      key: 'rzp_test_R5IPYCVzJiCP0V',
+      amount: orderData.amount,
+      currency: orderData.currency,
+      name: "Sejal Sinha",
+      description: "Wallet top-up",
+      order_id: orderData.id, // ✅ important
+      handler: async function (response) {
+        try {
+          // Send payment details to backend for verification
+          const verifyRes = await api.post('/api/payments/verify', {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature
+          });
+
+          if (verifyRes.data.success) {
+            toast.success('Funds added successfully');
+            await fetchData(); // refresh wallet balance
+          } else {
+            toast.error('Payment verification failed');
+          }
+        } catch (err) {
+          logError('Payment Verification', err);
+          toast.error('Error verifying payment');
+        }
+      },
+      prefill: { name: "Sejal Sinha", email: "sejalsinha322@gmail.com" },
+      theme: { color: "#F4C430" }
+    };
+
+    const paymentObject = new window.Razorpay(options);
+    paymentObject.open();
+  } catch (error) {
+    logError('handleRazorpayScreen', error);
+    toast.error('Payment initialization failed');
+  }
+};
 
   // const paymentFetch = async (e) => {
   //   e.preventDefault();
@@ -191,20 +201,24 @@ const Wallet = () => {
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
+
     try {
-      setIsSubmitting(true);
-      validateAmount(withdrawForm.amount);
-      if (Number(withdrawForm.amount) > walletData.balance) throw new Error('Insufficient balance');
-      const response = await walletService.withdrawFunds(withdrawForm);
+        setIsSubmitting(true);
+        validateAmount(withdrawForm.amount);
+        if (Number(withdrawForm.amount) > walletData.balance) throw new Error('Insufficient balance');
+        const response = await walletService.withdrawFunds(withdrawForm);
+
       if (response.data?.success) {
         toast.success('Withdrawal request submitted successfully');
         setShowWithdrawModal(false);
         setWithdrawForm({ amount: '', bankDetails: { accountNumber: '', ifscCode: '', accountHolderName: '' } });
         await fetchData();
+
       } else throw new Error(response.data?.message || 'Failed to process withdrawal');
     } catch (error) {
-      logError('handleWithdraw', error);
-      toast.error(error.message || 'Failed to process withdrawal');
+        logError('handleWithdraw', error);
+
+        toast.error(error.message || 'Failed to process withdrawal');
     } finally { setIsSubmitting(false); }
   };
 
@@ -459,8 +473,7 @@ const Wallet = () => {
                 type="submit" 
                 variant="primary"
                 onClick={() => createRazorpayOrder(100)}
-                // loading={isSubmitting}
-                // disabled={isSubmitting}
+                
               >
                 Pay
               </Button>
