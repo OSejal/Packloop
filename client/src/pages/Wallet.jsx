@@ -78,7 +78,7 @@ const handleRazorpayScreen = async (order) => {
     if (!res) throw new Error("Failed to load Razorpay checkout script");
 
     const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      key: import.meta.env.RAZORPAY_KEY_ID,
       amount: order.amount,
       currency: order.currency,
       order_id: order.id,
