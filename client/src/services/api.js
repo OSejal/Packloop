@@ -61,6 +61,16 @@ api.interceptors.response.use(
   }
 );
 
+
+const handleError = (err, context) => {
+  console.error(`[Wallet Error] - ${context}`, {
+    status: err.response?.status,
+    data: err.response?.data,
+    message: err.message,
+  });
+  throw err;
+};
+
 // Authentication services
 export const authService = {
   register: async (userData) => {
@@ -96,10 +106,54 @@ export const partnerService = {
 
 // Wallet services
 export const walletService = {
-  getWallet: () => api.get('/api/wallet').then(res => res.data),
-  getTransactions: (filters = {}) => api.get('/api/wallet/transactions', { params: filters }).then(res => res.data),
-  addFunds: (data) => api.post('/api/wallet/add-funds', data).then(res => res.data),
-  withdrawFunds: (data) => api.post('/api/wallet/withdraw', data).then(res => res.data),
+  // Get wallet details
+  getWallet: async () => {
+    try {
+      const res = await api.get("/api/wallet");
+      return handleResponse(res, "Failed to fetch wallet");
+    } catch (err) {
+      handleError(err, "Wallet fetch failed");
+    }
+  },
+
+  // Get transactions (with filters)
+  getTransactions: async (filters = {}) => {
+    try {
+      const res = await api.get("/api/wallet/transactions", { params: filters });
+      return handleResponse(res, "Failed to fetch transactions");
+    } catch (err) {
+      handleError(err, "Transactions fetch failed");
+    }
+  },
+
+  // Add funds
+  addFunds: async (data) => {
+    try {
+      const res = await api.post("/api/wallet/add-funds", data);
+      return handleResponse(res, "Failed to add funds");
+    } catch (err) {
+      handleError(err, "Add Funds");
+    }
+  },
+
+  // Withdraw funds
+  withdrawFunds: async (data) => {
+    try {
+      const res = await api.post("/api/wallet/withdraw", data);
+      return handleResponse(res, "Failed to withdraw funds");
+    } catch (err) {
+      handleError(err, "Withdraw Funds");
+    }
+  },
+
+  verifyPayment: async (paymentData) => {
+    try {
+      const res = await API.post("/payments/verify", paymentData);
+      return handleResponse(res, "Payment verification failed");
+    } catch (err) {
+      handleError(err, "Payment Verification");
+    }
+  },
 };
 
 // Pickup services

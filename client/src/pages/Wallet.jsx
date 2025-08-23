@@ -16,15 +16,6 @@ import api from '../services/api';
 
 const DEFAULT_CURRENCY = import.meta.env.VITE_DEFAULT_CURRENCY || 'INR';
 
-const logError = (context, error) => {
-  console.error(`[Wallet Error] - ${context}`, {
-    message: error?.message,
-    stack: error?.stack,
-    name: error?.name,
-    responseData: error?.response?.data || null
-  });
-};
-
 const Wallet = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
