@@ -77,7 +77,7 @@ const handleRazorpayScreen = async (orderData) => {
     const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) throw new Error("Failed to load Razorpay checkout script");
 
-    const orderRes = await api.post('/api/payments/orders', { 
+    const orderRes = await api.post('/api/payments/create-order', { 
       amount: orderData, 
       currency: 'INR' 
     });
