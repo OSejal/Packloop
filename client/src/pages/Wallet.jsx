@@ -71,14 +71,21 @@ const Wallet = () => {
 
 const handleRazorpayScreen = async (amount) => {
   try {
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) throw new Error("Failed to load Razorpay checkout script");
 
+    const amountInPaise = Math.floor(Number(amount) * 100); // convert rupees to paise
+
     // Create Razorpay order from backend
     const orderResponse = await api.post("/api/payments/create-order", {
-      amount: amount * 100, // convert rupees to paise
+      amount: amountInPaise,
       currency: "INR",
     });
     const order = orderResponse.data;
@@ -88,7 +95,7 @@ const handleRazorpayScreen = async (amount) => {
     // Open Razorpay checkout
     const options = {
       key: import.meta.env.RAZORPAY_KEY_ID,
-      amount: order.amount,
+      amount: amountInPaise,
       currency: order.currency,
       order_id: order.id,
       name: "Sejal Sinha",
@@ -99,7 +106,7 @@ const handleRazorpayScreen = async (amount) => {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
-            amount: order.amount / 100 // convert paise to rupees
+            amount: Number(amount) // in rupees
           });
 
           if (verifyRes.data.success) {
@@ -129,6 +136,7 @@ const handleRazorpayScreen = async (amount) => {
     setIsSubmitting(false);
   }
 };
+
 
 
 
