@@ -9,7 +9,7 @@ const port = process.env.PORT || 5000;
 const authRoutes = require('./routes/auth');
 const partnerRoutes = require('./routes/partner');
 const walletRoutes = require('./routes/wallet');
-const pickupRoutes = require('./routes/pickup');
+// const pickupRoutes = require('./routes/pickup');
 const paymentRoutes = require("./routes/payments");
 const orderRoutes = require('./routes/order');
 const profileRoutes = require('./routes/profile');
@@ -21,14 +21,14 @@ app.use(express.json());
 
 // Sample route
 app.get('/', (req, res) => {
-  res.send('MCP System Backend is Running 🚀');
+  res.send('MCP System Backend is Running');
 });
 
 // routes 
 app.use('/api/auth', authRoutes);
 app.use('/api/partners', partnerRoutes);
 app.use('/api/wallet', walletRoutes);
-app.use('/api/pickups', pickupRoutes);
+// app.use('/api/pickups', pickupRoutes);
 app.use('/api/orders', orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/profile", profileRoutes);
