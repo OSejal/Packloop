@@ -39,7 +39,7 @@ router.post("/orders", async (req, res) => {
 
 
 
-router.get("/payment/:paymentId", async(req, res) => {
+router.get("/:paymentId", async(req, res) => {
   const {paymentId} = req.params;
 
   const razorpay = new Razorpay({
