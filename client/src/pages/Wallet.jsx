@@ -56,7 +56,7 @@ const Wallet = () => {
   // Create Razorpay order
   const createRazorpayOrder = async (amount) => {
   try {
-    const response = await api.post("/api/payments/orders", {
+    const response = await api.post("/api/payments/create-order", {
       amount,
       currency: "INR",
     });
@@ -87,6 +87,7 @@ const handleRazorpayScreen = async (orderData) => {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: order.amount,
       currency: order.currency,
+      order_id: order.order_id,
       name: "Sejal Sinha",
       description: "Wallet top-up",
       order_id: order.id,
