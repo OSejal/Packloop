@@ -69,16 +69,26 @@ const Wallet = () => {
 };
 
 
-  // Open Razorpay screen
-const handleRazorpayScreen = async (order) => {
+const handleRazorpayScreen = async (amount) => {
   try {
     setIsSubmitting(true);
 
+    // Load Razorpay checkout script
     const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) throw new Error("Failed to load Razorpay checkout script");
 
+    //  Call backend to create Razorpay order
+    const orderResponse = await api.post("/api/payments/create-order", {
+      amount,
+      currency: "INR",
+    });
+    const order = orderResponse.data;
+
+    if (!order || !order.id) throw new Error("Failed to create payment order");
+
+    // Open Razorpay checkout
     const options = {
-      key: import.meta.env.RAZORPAY_KEY_ID,
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID, // make sure it's your public key
       amount: order.amount,
       currency: order.currency,
       order_id: order.id,
