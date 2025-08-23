@@ -73,13 +73,12 @@ const handleRazorpayScreen = async (amount) => {
   try {
     setIsSubmitting(true);
 
-    // Load Razorpay checkout script
     const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) throw new Error("Failed to load Razorpay checkout script");
 
-    //  Call backend to create Razorpay order
+    // Create Razorpay order from backend
     const orderResponse = await api.post("/api/payments/create-order", {
-      amount,
+      amount: amount * 100, // convert rupees to paise
       currency: "INR",
     });
     const order = orderResponse.data;
@@ -88,7 +87,7 @@ const handleRazorpayScreen = async (amount) => {
 
     // Open Razorpay checkout
     const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID, // make sure it's your public key
+      key: import.meta.env.RAZORPAY_KEY_ID,
       amount: order.amount,
       currency: order.currency,
       order_id: order.id,
@@ -112,7 +111,7 @@ const handleRazorpayScreen = async (amount) => {
             toast.error("Payment verification failed");
           }
         } catch (err) {
-          console.error("Payment verification error:", err);
+          console.error("Payment verification error:", err.response?.data || err.message || err);
           toast.error("Error verifying payment");
         }
       },
@@ -124,12 +123,13 @@ const handleRazorpayScreen = async (amount) => {
     paymentObject.open();
 
   } catch (error) {
-    console.error("handleRazorpayScreen error:", error);
+    console.error("handleRazorpayScreen error:", error.response?.data || error.message || error);
     toast.error(error.message || "Payment initialization failed");
   } finally {
     setIsSubmitting(false);
   }
 };
+
 
 
   // const paymentFetch = async (e) => {
