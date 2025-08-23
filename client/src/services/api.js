@@ -62,15 +62,6 @@ api.interceptors.response.use(
 );
 
 
-const handleError = (err, context) => {
-  console.error(`[Wallet Error] - ${context}`, {
-    status: err.response?.status,
-    data: err.response?.data,
-    message: err.message,
-  });
-  throw err;
-};
-
 // Authentication services
 export const authService = {
   register: async (userData) => {
@@ -106,55 +97,47 @@ export const partnerService = {
 
 // Wallet services
 export const walletService = {
-  // Get wallet details
   getWallet: async () => {
     try {
-      const res = await api.get("/api/wallet");
-      return handleResponse(res, "Failed to fetch wallet");
+      const res = await api.get('/api/wallet');
+      return res.data;
     } catch (err) {
-      handleError(err, "Wallet fetch failed");
+      console.error("[Wallet Error] - Wallet fetch failed", err.response?.data || err.message);
+      throw err;
     }
   },
 
-  // Get transactions (with filters)
   getTransactions: async (filters = {}) => {
     try {
-      const res = await api.get("/api/wallet/transactions", { params: filters });
-      return handleResponse(res, "Failed to fetch transactions");
+      const res = await api.get('/api/wallet/transactions', { params: filters });
+      return res.data;
     } catch (err) {
-      handleError(err, "Transactions fetch failed");
+      console.error("[Wallet Error] - Transactions fetch failed", err.response?.data || err.message);
+      throw err;
     }
   },
 
-  // Add funds
   addFunds: async (data) => {
     try {
-      const res = await api.post("/api/wallet/add-funds", data);
-      return handleResponse(res, "Failed to add funds");
+      const res = await api.post('/api/wallet/add-funds', data);
+      return res.data;
     } catch (err) {
-      handleError(err, "Add Funds");
+      console.error("[Wallet Error] - Add Funds", err.response?.data || err.message);
+      throw err;
     }
   },
 
-  // Withdraw funds
   withdrawFunds: async (data) => {
     try {
-      const res = await api.post("/api/wallet/withdraw", data);
-      return handleResponse(res, "Failed to withdraw funds");
+      const res = await api.post('/api/wallet/withdraw', data);
+      return res.data;
     } catch (err) {
-      handleError(err, "Withdraw Funds");
-    }
-  },
-
-  verifyPayment: async (paymentData) => {
-    try {
-      const res = await API.post("/payments/verify", paymentData);
-      return handleResponse(res, "Payment verification failed");
-    } catch (err) {
-      handleError(err, "Payment Verification");
+      console.error("[Wallet Error] - Withdraw Funds", err.response?.data || err.message);
+      throw err;
     }
   },
 };
+
 
 // Pickup services
 export const pickupService = {

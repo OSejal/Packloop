@@ -60,7 +60,7 @@ const Wallet = () => {
     const response = await api.post('/api/payments/orders', data);  
     handleRazorpayScreen(response.data.amount);
   } catch (error) {
-    logError('createRazorpayOrder', error);
+    console.error('createRazorpayOrder', error);
     toast.error('Failed to initiate payment');
   }
 };
@@ -96,7 +96,7 @@ const Wallet = () => {
             toast.error('Payment verification failed');
           }
         } catch (err) {
-          logError('Payment Verification', err);
+          console.error('Payment Verification', err);
           toast.error('Error verifying payment');
         }
       },
@@ -107,7 +107,7 @@ const Wallet = () => {
     const paymentObject = new window.Razorpay(options);
     paymentObject.open();
   } catch (error) {
-    logError('handleRazorpayScreen', error);
+    console.error('handleRazorpayScreen', error);
     toast.error('Payment initialization failed');
   }
 };
@@ -119,7 +119,7 @@ const Wallet = () => {
   //     const response = await axios.get(`http://localhost:4000/api/payments/${paymentId}`);
   //     setResponseState(response.data);
   //   } catch (error) {
-  //     logError('paymentFetch', error);
+  //     console.error('paymentFetch', error);
   //     toast.error('Failed to fetch payment details');
   //   }
   // };
@@ -142,13 +142,13 @@ const Wallet = () => {
       ]);
 
       if (walletResponse.data?.success) setWalletData(walletResponse.data.data || { balance: 0 });
-      else logError('Wallet fetch failed', walletResponse.data);
+      else console.error('Wallet fetch failed', walletResponse.data);
 
       if (Array.isArray(transactionsResponse.data?.transactions)) setTransactions(transactionsResponse.data.transactions);
-      else logError('Transactions fetch invalid', transactionsResponse.data);
+      else console.error('Transactions fetch invalid', transactionsResponse.data);
 
     } catch (error) {
-      logError('fetchData', error);
+      console.error('fetchData', error);
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.');
         navigate('/login');
@@ -185,7 +185,7 @@ const Wallet = () => {
         await fetchData();
       } else throw new Error(response.data?.message || 'Failed to add funds');
     } catch (error) {
-      logError('handleAddFunds', error);
+      console.error('handleAddFunds', error);
       toast.error(error.message || 'Failed to add funds');
     } finally { setIsSubmitting(false); }
   };
@@ -207,7 +207,7 @@ const Wallet = () => {
 
       } else throw new Error(response.data?.message || 'Failed to process withdrawal');
     } catch (error) {
-        logError('handleWithdraw', error);
+        console.error('handleWithdraw', error);
 
         toast.error(error.message || 'Failed to process withdrawal');
     } finally { setIsSubmitting(false); }
