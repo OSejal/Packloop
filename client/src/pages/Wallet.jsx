@@ -475,7 +475,7 @@ const Wallet = () => {
               type="button"
               variant="primary"
               loading={isSubmitting}
-              onClick={() => handleRazorpayPayment(Number(addFundsForm.amount))}
+              onClick={() => handleRazorpayScreen(Number(addFundsForm.amount))}
             >
               Pay
             </Button>
