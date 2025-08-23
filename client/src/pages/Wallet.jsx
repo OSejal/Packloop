@@ -70,35 +70,27 @@ const Wallet = () => {
 
 
   // Open Razorpay screen
-const handleRazorpayScreen = async (orderData) => {
+const handleRazorpayScreen = async (order) => {
   try {
     setIsSubmitting(true);
 
     const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) throw new Error("Failed to load Razorpay checkout script");
 
-    const orderRes = await api.post('/api/payments/create-order', { 
-      amount: orderData, 
-      currency: 'INR' 
-    });
-    const order = orderRes.data;
-
     const options = {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: order.amount,
       currency: order.currency,
-      order_id: order.order_id,
+      order_id: order.id,
       name: "Sejal Sinha",
       description: "Wallet top-up",
-      order_id: order.id,
       handler: async function (response) {
         try {
           const verifyRes = await api.post('/api/payments/verify', {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
-            // ✅ orderData is a number, not object
-            amount: orderData / 100 
+            amount: order.amount / 100 // convert paise to rupees
           });
 
           if (verifyRes.data.success) {
