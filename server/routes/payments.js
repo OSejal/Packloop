@@ -66,18 +66,26 @@ router.get("/payment/:paymentId", async(req, res) => {
 
 // Verify payment signature
 router.post("/verify", (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-  const body = razorpay_order_id + "|" + razorpay_payment_id;
-  const expectedSignature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(body.toString())
-    .digest("hex");
+    const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_SECRET);
+    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+    const generatedSignature = hmac.digest('hex');
 
-  if (expectedSignature === razorpay_signature) {
-    res.json({ success: true });
-  } else {
-    res.status(400).json({ success: false });
+    if (generatedSignature !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Invalid signature" });
+    }
+
+    // ✅ Update wallet balance here
+    // Example:
+    // await Wallet.findOneAndUpdate({ userId: req.user.id }, { $inc: { balance: amount } });
+    // await Transaction.create({ userId: req.user.id, amount, type: 'credit', status: 'completed' });
+
+    return res.json({ success: true, message: "Payment verified and wallet updated" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
