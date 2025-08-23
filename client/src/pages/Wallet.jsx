@@ -67,48 +67,59 @@ const Wallet = () => {
 
   // Open Razorpay screen
   const handleRazorpayScreen = async (orderData) => {
-  try {
+   try {
+    setIsSubmitting(true);
+
+    // Load Razorpay script
     const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
-    if (!res) {
-      throw new Error('Failed to load Razorpay checkout script');
-    }
+    if (!res) throw new Error("Failed to load Razorpay checkout script");
+
+    // Create order on backend
+    const orderRes = await api.post('/api/payments/orders', { amount, currency: 'INR' });
+    const order = orderRes.data;
 
     const options = {
-      key: 'rzp_test_R5IPYCVzJiCP0V',
-      amount: orderData.amount,
-      currency: orderData.currency,
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID, // use .env key
+      amount: order.amount,
+      currency: order.currency,
       name: "Sejal Sinha",
       description: "Wallet top-up",
-      order_id: orderData.id, // ✅ important
+      order_id: order.id,
       handler: async function (response) {
         try {
-          // Send payment details to backend for verification
+          // Verify payment on backend
           const verifyRes = await api.post('/api/payments/verify', {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
+            razorpay_signature: response.razorpay_signature,
+            amount // send amount to update wallet
           });
 
           if (verifyRes.data.success) {
-            toast.success('Funds added successfully');
-            await fetchData(); // refresh wallet balance
+            toast.success("Funds added successfully!");
+            setShowAddFundsModal(false);
+            setAddFundsForm({ amount: '', paymentMethod: 'UPI' });
+            await fetchData(); // refresh wallet
           } else {
-            toast.error('Payment verification failed');
+            toast.error("Payment verification failed");
           }
         } catch (err) {
-          console.error('Payment Verification', err);
-          toast.error('Error verifying payment');
+          console.error("Payment verification error:", err);
+          toast.error("Error verifying payment");
         }
       },
-      prefill: { name: "Sejal Sinha", email: "sejalsinha322@gmail.com" },
+      prefill: { name: user.name || 'User', email: user.email || '' },
       theme: { color: "#F4C430" }
     };
 
     const paymentObject = new window.Razorpay(options);
     paymentObject.open();
+
   } catch (error) {
-    console.error('handleRazorpayScreen', error);
-    toast.error('Payment initialization failed');
+    console.error("handleRazorpayPayment error:", error);
+    toast.error(error.message || "Payment initialization failed");
+  } finally {
+    setIsSubmitting(false);
   }
 };
 
@@ -438,40 +449,40 @@ const Wallet = () => {
         onClose={() => !isSubmitting && setShowAddFundsModal(false)}
         title="Add Funds to Wallet"
       >
-        <form onSubmit={handleAddFunds}>
-          <div className="space-y-4">
-            <Input
-              label="Amount"
-              type="number"
-              value={addFundsForm.amount}
-              onChange={(e) => setAddFundsForm(prev => ({ ...prev, amount: e.target.value }))}
-              required
-              min="1"
-              max="100000"
+        <div className="space-y-4">
+          <Input
+            label="Amount"
+            type="number"
+            value={addFundsForm.amount}
+            onChange={(e) => setAddFundsForm(prev => ({ ...prev, amount: e.target.value }))}
+            required
+            min="1"
+            max="100000"
+            disabled={isSubmitting}
+          />
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAddFundsModal(false)}
               disabled={isSubmitting}
-            />
-            
-            <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowAddFundsModal(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                variant="primary"
-                onClick={() => createRazorpayOrder(100)}
-                
-              >
-                Pay
-              </Button>
-            </div>
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              variant="primary"
+              loading={isSubmitting}
+              onClick={() => handleRazorpayPayment(Number(addFundsForm.amount))}
+            >
+              Pay
+            </Button>
           </div>
-        </form>
+        </div>
       </Modal>
+
 
       {/* Withdraw Modal */}
       <Modal
