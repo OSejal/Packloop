@@ -1,7 +1,6 @@
 // backend/routes/payment.js
-const express = require ("express");
+const express = require("express");
 const Razorpay = require("razorpay");
-const crypto = require("crypto");
 const paymentController = require("../controllers/paymentController");
 const router = express.Router();
 const { verifyToken } = require("../middleware/auth");
@@ -14,46 +13,43 @@ const razorpay = new Razorpay({
 // Create payment order
 router.post("/create-order", async (req, res) => {
   try {
-    console.log("REQ BODY:", req.body);
-
     const { amount, currency } = req.body;
 
-    if (!amount) {
-      return res.status(400).json({ error: "Amount is required" });
+    // Validate amount
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+      return res.status(400).json({ error: "Valid amount is required" });
     }
 
-    console.log("Using Razorpay Keys:", process.env.RAZORPAY_KEY_ID);
+    const finalAmount = Math.round(Number(amount) * 100); // convert to paise
+
+    console.log("Creating Razorpay order with amount:", finalAmount, "currency:", currency || "INR");
 
     const options = {
-      amount: Number(amount) * 100, // convert to paise
+      amount: finalAmount,
       currency: currency || "INR",
       receipt: "receipt_" + Date.now(),
     };
 
     const order = await razorpay.orders.create(options);
-    console.log("Order created:", order);
+
+    console.log("Razorpay order created:", order);
     res.json(order);
+
   } catch (error) {
     console.error("Error creating Razorpay order:", error);
     res.status(500).json({ error: error.message || "Error creating Razorpay order" });
   }
 });
 
-
-
+// Fetch payment details
 router.get("/:paymentId", async(req, res) => {
-  const {paymentId} = req.params;
-
-  const razorpay = new Razorpay({
-    key_id: "rzp_test_R5IPYCVzJiCP0V",
-    key_secret: "e5iEvFpkYs7xxWNl4zz2fuMG",
-  })
+  const { paymentId } = req.params;
 
   try {
     const payment = await razorpay.payments.fetch(paymentId);
 
     if (!payment) {
-      return res.status(500).json("Error at razorpay loading")
+      return res.status(500).json({ error: "Failed to fetch payment details" });
     }
 
     res.json({
@@ -61,14 +57,14 @@ router.get("/:paymentId", async(req, res) => {
       method: payment.method,
       amount: payment.amount,
       currency: payment.currency
-    })
+    });
   } catch(error) {
-    res.status(500).json("failed to fetch");
+    console.error("Error fetching payment:", error);
+    res.status(500).json({ error: "Failed to fetch payment" });
   }
-})
+});
 
 // Verify payment signature
-router.post("/verify", verifyToken,  paymentController.verifyPayment);
+router.post("/verify", verifyToken, paymentController.verifyPayment);
 
 module.exports = router;
-
