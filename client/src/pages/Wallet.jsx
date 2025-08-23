@@ -70,20 +70,21 @@ const Wallet = () => {
 
 
   // Open Razorpay screen
-  const handleRazorpayScreen = async (orderData) => {
-   try {
+const handleRazorpayScreen = async (orderData) => {
+  try {
     setIsSubmitting(true);
 
-    // Load Razorpay script
     const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) throw new Error("Failed to load Razorpay checkout script");
 
-    // Create order on backend
-    const orderRes = await api.post('/api/payments/orders', { amount, currency: 'INR' });
+    const orderRes = await api.post('/api/payments/orders', { 
+      amount: orderData, 
+      currency: 'INR' 
+    });
     const order = orderRes.data;
 
     const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID, // use .env key
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: order.amount,
       currency: order.currency,
       name: "Sejal Sinha",
@@ -91,19 +92,19 @@ const Wallet = () => {
       order_id: order.id,
       handler: async function (response) {
         try {
-          // Verify payment on backend
           const verifyRes = await api.post('/api/payments/verify', {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
-            amount: orderData.amount / 100
+            // ✅ orderData is a number, not object
+            amount: orderData / 100 
           });
 
           if (verifyRes.data.success) {
             toast.success("Funds added successfully!");
             setShowAddFundsModal(false);
             setAddFundsForm({ amount: '', paymentMethod: 'UPI' });
-            await fetchData(); // refresh wallet
+            await fetchData();
           } else {
             toast.error("Payment verification failed");
           }
@@ -126,6 +127,7 @@ const Wallet = () => {
     setIsSubmitting(false);
   }
 };
+
 
   // const paymentFetch = async (e) => {
   //   e.preventDefault();
