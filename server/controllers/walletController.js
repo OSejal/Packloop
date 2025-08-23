@@ -123,9 +123,8 @@ exports.addFunds = async (req, res) => {
     const { amount, paymentMethod } = req.body;
     const userId = req.user.userId;
 
-    // Validate request data
+    // Validate user
     if (!userId) {
-      console.error('No user ID found in request');
       return res.status(401).json({
         success: false,
         message: 'User not authenticated'
@@ -133,8 +132,7 @@ exports.addFunds = async (req, res) => {
     }
 
     // Validate amount
-    if (!amount || isNaN(amount) || amount <= 0) {
-      console.error('Invalid amount:', amount);
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
       return res.status(400).json({
         success: false,
         message: 'Invalid amount'
@@ -143,19 +141,15 @@ exports.addFunds = async (req, res) => {
 
     // Validate payment method
     if (!paymentMethod) {
-      console.error('Payment method missing');
       return res.status(400).json({
         success: false,
         message: 'Payment method is required'
       });
     }
 
-    // Find user's wallet
+    // Find or create wallet
     let wallet = await Wallet.findOne({ userId });
-    console.log('Found wallet:', wallet ? 'Yes' : 'No');
-    
     if (!wallet) {
-      // Create new wallet if it doesn't exist
       wallet = new Wallet({
         userId,
         balance: 0,
@@ -163,25 +157,21 @@ exports.addFunds = async (req, res) => {
       });
     }
 
-    // Create transaction record
+    // Create transaction
     const transaction = {
       type: 'CREDIT',
       amount: Number(amount),
       description: `Added funds via ${paymentMethod}`,
       reference: `ADD-${Date.now()}`,
       status: 'COMPLETED',
-      metadata: {
-        paymentMethod
-      }
+      metadata: { paymentMethod }
     };
 
-    
-    try {
-      await wallet.addTransaction(transaction);
-    } catch (error) {
-      console.error('Error adding transaction:', error);
-      throw error;
-    }
+    // ✅ Update balance and save
+    wallet.balance += Number(amount);
+    wallet.transactions.push(transaction);
+
+    await wallet.save();
 
     res.status(200).json({
       success: true,
@@ -192,11 +182,7 @@ exports.addFunds = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Add funds error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
+    console.error('Add funds error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to add funds',
@@ -204,6 +190,7 @@ exports.addFunds = async (req, res) => {
     });
   }
 };
+
 
 // Transfer funds to pickup partner
 exports.transferFunds = async (req, res) => {
