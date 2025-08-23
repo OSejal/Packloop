@@ -56,14 +56,18 @@ const Wallet = () => {
   // Create Razorpay order
   const createRazorpayOrder = async (amount) => {
   try {
-    const data = { amount, currency: "INR" };
-    const response = await api.post('/api/payments/orders', data);  
-    handleRazorpayScreen(response.data.amount);
+    const response = await api.post("/api/payments/orders", {
+      amount,
+      currency: "INR",
+    });
+    return response.data; 
   } catch (error) {
-    console.error('createRazorpayOrder', error);
-    toast.error('Failed to initiate payment');
+    console.error("createRazorpayOrder", error);
+    toast.error("Failed to initiate payment");
+    throw error;
   }
 };
+
 
   // Open Razorpay screen
   const handleRazorpayScreen = async (orderData) => {
@@ -185,21 +189,15 @@ const Wallet = () => {
   const handleAddFunds = async (e) => {
     e.preventDefault();
     try {
-      if (user.role !== 'MCP') return toast.error('Only MCP users can add funds');
-      setIsSubmitting(true);
       validateAmount(addFundsForm.amount);
-      const response = await walletService.addFunds(addFundsForm);
-      if (response.data?.success) {
-        toast.success('Funds added successfully');
-        setShowAddFundsModal(false);
-        setAddFundsForm({ amount: '', paymentMethod: 'UPI' });
-        await fetchData();
-      } else throw new Error(response.data?.message || 'Failed to add funds');
+      const orderData = await createRazorpayOrder(Number(addFundsForm.amount));
+      handleRazorpayScreen(orderData); 
     } catch (error) {
-      console.error('handleAddFunds', error);
-      toast.error(error.message || 'Failed to add funds');
-    } finally { setIsSubmitting(false); }
+      console.error("handleAddFunds", error);
+      toast.error(error.message || "Failed to add funds");
+    }
   };
+
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
@@ -475,7 +473,7 @@ const Wallet = () => {
               type="button"
               variant="primary"
               loading={isSubmitting}
-              onClick={() => handleRazorpayScreen(Number(addFundsForm.amount))}
+              onClick={handleAddFunds}
             >
               Pay
             </Button>
