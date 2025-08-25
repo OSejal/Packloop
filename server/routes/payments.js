@@ -15,6 +15,8 @@ router.post("/create-order", async (req, res) => {
   try {
     const { amount, currency } = req.body;
 
+    console.log("Incoming body:", req.body);
+
     // Validate amount
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
       return res.status(400).json({ error: "Valid amount is required" });

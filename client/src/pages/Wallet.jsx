@@ -85,7 +85,7 @@ const handleRazorpayScreen = async (amount) => {
 
     // Create Razorpay order from backend
     const orderResponse = await api.post("/api/payments/create-order", {
-      amount: amountInPaise,
+      amount: Number(amount),
       currency: "INR",
     });
     const order = orderResponse.data;
