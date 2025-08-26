@@ -35,36 +35,35 @@ const Partners = () => {
     try {
       setIsLoading(true);
       const response = await partnerService.getPartners();
-      
-      let pickupPartners = [];
+
+      let allPartners = [];
+
       if (Array.isArray(response.data)) {
-        // Direct array response
-        pickupPartners = response.data.filter(
-          partner => partner.role === 'PICKUP_PARTNER' && 
-          (partner.mcpId === user.id || partner.mcpId === user._id)
-        );
-      } else if (response.data && response.data.data && response.data.data.partners) {
-        pickupPartners = response.data.data.partners.filter(
-          partner => partner.role === 'PICKUP_PARTNER' && 
-          (partner.mcpId === user.id || partner.mcpId === user._id)
-        );
+        allPartners = response.data;
+      } else if (response.data?.data?.partners) {
+        allPartners = response.data.data.partners;
       } else if (response.data) {
-        // Simple object response
-        pickupPartners = Array.isArray(response.data) ? response.data : [response.data];
-        pickupPartners = pickupPartners.filter(
-          partner => partner.role === 'PICKUP_PARTNER' && 
-          (partner.mcpId === user.id || partner.mcpId === user._id)
-        );
+        allPartners = Array.isArray(response.data) ? response.data : [response.data];
       }
-      
+
+      const pickupPartners = allPartners.filter(
+        (partner) =>
+          partner.role === "PICKUP_PARTNER" &&
+          String(partner.mcpId) === String(user.id || user._id)
+      );
+
+      console.log("Fetched partners:", allPartners);
+      console.log("Filtered pickup partners:", pickupPartners);
+
       setPartners(pickupPartners);
     } catch (error) {
-      console.error('Error fetching partners:', error);
-      toast.error('Failed to load partners');
+      console.error("Error fetching partners:", error);
+      toast.error("Failed to load partners");
     } finally {
       setIsLoading(false);
     }
   };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
