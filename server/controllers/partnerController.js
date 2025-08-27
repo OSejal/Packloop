@@ -28,7 +28,6 @@ exports.addPartner = async (req, res) => {
   let { name, email, password, phone, mcpId, commission = 0 } = req.body;
 
   try {
-    // Validate required fields
     if (!name || !email || !password || !phone || !mcpId) {
       return res.status(400).json({
         success: false,
@@ -45,7 +44,6 @@ exports.addPartner = async (req, res) => {
       console.log('Email already exists, using alternative:', email);
     }
 
-    // Check if phone exists
     const existingPhone = await User.findOne({ phone });
     if (existingPhone) {
       phone = `${phone}`;
@@ -102,10 +100,14 @@ exports.addPartner = async (req, res) => {
           name: partner.name,
           email: partner.email,
           phone: partner.phone,
-          role: partner.role
+          role: partner.role,
+          mcpId: partner.mcpId,   // <-- ADD THIS
+          commissionRate: partner.commissionRate,
+          status: partner.status
         }
       }
     });
+
   } catch (err) {
     console.error('Partner creation error:', err);
     

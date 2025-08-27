@@ -16,7 +16,6 @@ router.use((req, res, next) => {
   next();
 });
 
-// Partner routes
 router.get('/', verifyToken, getAllPartners);
 
 // For testing, temporarily remove the role restriction
