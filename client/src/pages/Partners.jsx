@@ -12,7 +12,6 @@ const Partners = () => {
   const { user, refreshTokenIfNeeded } = useAuth();
   const [partners, setPartners] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  // const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -46,16 +45,26 @@ const Partners = () => {
         allPartners = Array.isArray(response.data) ? response.data : [response.data];
       }
 
-      const pickupPartners = allPartners.filter(
-        (partner) =>
-          partner.role === "PICKUP_PARTNER" &&
-          String(partner.mcpId) === String(user.id || user._id)
-      );
+     // Flatten the partners array
+        let flatPartners = [];
+        allPartners.forEach(item => {
+          if (Array.isArray(item.partners)) {
+            flatPartners = flatPartners.concat(item.partners);
+          } else {
+            flatPartners.push(item);
+          }
+        });
 
-      console.log("Fetched partners:", allPartners);
-      console.log("Filtered pickup partners:", pickupPartners);
+        const pickupPartners = flatPartners.filter(partner => {
+          const roleMatch = partner.role?.toUpperCase() === "PICKUP_PARTNER";
+          const mcpMatch = String(partner.mcpId?._id || partner.mcpId) === String(user.id || user._id);
+          console.log("roleMatch:", roleMatch, "mcpMatch:", mcpMatch);
+          return roleMatch && mcpMatch;
+        });
 
-      setPartners(pickupPartners);
+        console.log("Filtered pickup partners:", pickupPartners);
+        console.log("Fetched partners:", allPartners);
+        setPartners(pickupPartners);
     } catch (error) {
       console.error("Error fetching partners:", error);
       toast.error("Failed to load partners");
@@ -114,10 +123,7 @@ const Partners = () => {
   e.preventDefault();
 
   if (!validateForm()) return;
-
-  try {
-
-    let response;
+   let response;
     try {
       response = await partnerService.updatePartner(formData._id, {
         name: formData.name,
@@ -149,18 +155,7 @@ const Partners = () => {
       )
     );
     resetForm();
-    // fetchPartners(); // refresh UI with new values
-  } catch (error) {
-    console.error("Error status:", error.response?.status);
-    console.error("Error message:", error.message);
-
-    let errorMessage = "Failed to update partner";
-    if (error.response?.data?.message) {
-      errorMessage = error.response.data.message;
-    }
-    toast.error(errorMessage);
-  }
-};
+  };
 
 
   const handleCreatePartner = async (e) => {
@@ -189,7 +184,7 @@ const Partners = () => {
       );
       if (duplicate) {
         toast.error("Partner with same email or phone already exists");
-        return; // Stop partner creation
+        return; 
       }
 
       let response;
@@ -209,7 +204,6 @@ const Partners = () => {
         }
       }
       
-      console.log('Partner creation response:', response);
       toast.success('Partner created successfully');
       setShowCreateModal(false);
       resetForm();
@@ -227,20 +221,26 @@ const Partners = () => {
     }
   };
 
-  const handleDeletePartner = async () => {
-    if (!selectedPartner) return;
-    
-    try {
-      await partnerService.deletePartner(selectedPartner._id);
-      toast.success('Partner deleted successfully');
-      setShowDeleteModal(false);
-      setSelectedPartner(null);
-      fetchPartners();
-    } catch (error) {
-      console.error('Error deleting partner:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete partner');
-    }
-  };
+const handleDeletePartner = async () => {
+  if (!selectedPartner) return;
+
+  try {
+    await partnerService.deletePartner(selectedPartner._id);
+
+    toast.success("Partner deleted successfully");
+
+    // Remove from state without refetching
+    setPartners((prev) => prev.filter((p) => p._id !== selectedPartner._id));
+
+    // Close modal + reset selection
+    setShowDeleteModal(false);
+    setSelectedPartner(null);
+  } catch (error) {
+    console.error("Error deleting partner:", error);
+    toast.error(error.response?.data?.message || "Failed to delete partner");
+  }
+};
+
 
   const resetForm = () => {
     setFormData({
@@ -291,7 +291,6 @@ const Partners = () => {
         </div>
         
         <div className="p-6">
-          {/* Search Bar */}
           <div className="relative mb-6">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <FiSearch className="h-5 w-5 text-gray-400" />
@@ -345,6 +344,7 @@ const Partners = () => {
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Partner details UI */}
               {filteredPartners.map((partner) => (
                 <div key={partner._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start gap-5">
@@ -431,6 +431,7 @@ const Partners = () => {
                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">Add Pickup Partner</h3>
                   
+                  {/* Create partner */}
                   <form className="mt-6 space-y-4" onSubmit={handleCreatePartner}>
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -559,7 +560,6 @@ const Partners = () => {
 
                   {/* Edit Form */}
                   <form className="mt-6 space-y-4" onSubmit={handleEditPartner}>
-                    {/* Full Name */}
                     <div>
                       <label
                         htmlFor="name"

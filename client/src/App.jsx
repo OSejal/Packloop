@@ -32,7 +32,7 @@ const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Suspense fallback={<div className="flex justify-center items-center h-screen">Loading...</div>}>
+        <Suspense fallback={<div className="flex justify-center items-center h-screen"><div className="w-12 h-12 border-4 border-green-500 border-b-transparent rounded-full animate-spin"></div></div>}>
           <Routes>
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Home />} />

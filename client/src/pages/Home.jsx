@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
-import { FiMail, FiUser, FiTruck, FiPackage, FiCreditCard } from "react-icons/fi";
 import { ReactTyped } from "react-typed";
 
 // Hook for quick actions
@@ -12,21 +11,21 @@ const useQuickActions = (user) => {
     const baseActions = [
       {
         to: "/profile",
-        icon: <FiUser className="h-6 w-6 text-blue-600" />,
+        icon: <img src="/user.png" className="h-12 w-12" />,
         bg: "bg-blue-100",
         title: "Profile",
         desc: "View and edit your profile",
       },
       {
         to: "/wallet",
-        icon: <FiCreditCard className="h-6 w-6 text-green-600" />,
+        icon: <img src="/wallet.png" className="h-12 w-12" />,
         bg: "bg-green-100",
         title: "Wallet",
         desc: "Manage your transactions",
       },
       {
         to: "/orders",
-        icon: <FiPackage className="h-6 w-6 text-red-600" />,
+        icon: <img src="/booking.png" className="h-12 w-12" />,
         bg: "bg-red-100",
         title: "Orders",
         desc: "Track and manage orders",
@@ -36,7 +35,7 @@ const useQuickActions = (user) => {
     if (user.role === "MCP") {
       baseActions.push({
         to: "/partners",
-        icon: <FiUser className="h-6 w-6 text-purple-600" />,
+        icon: <img src="/delivery-man.png" className="h-12 w-12" />,
         bg: "bg-purple-100",
         title: "Partners",
         desc: "Manage your pickup partners",
@@ -46,7 +45,7 @@ const useQuickActions = (user) => {
     if (user.role === "PICKUP_PARTNER") {
       baseActions.push({
         to: "/pickups",
-        icon: <FiTruck className="h-6 w-6 text-yellow-600" />,
+        icon: <img src="/boy.png" className="h-12 w-12" />,
         bg: "bg-yellow-100",
         title: "Pickups",
         desc: "View and manage pickups",
@@ -55,7 +54,7 @@ const useQuickActions = (user) => {
 
     baseActions.push({
       href: "mailto:support@mcpsystem.com",
-      icon: <FiMail className="h-6 w-6 text-gray-600" />,
+      icon: <img src="/gear.png" className="h-12 w-12" />,
       bg: "bg-gray-100",
       title: "Support",
       desc: "Contact our support team",
@@ -72,12 +71,13 @@ const Home = () => {
 
   // Show loading while auth state is being determined
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-[80vh]">
-        <p className="text-gray-600 text-lg">Loading...</p>
-      </div>
-    );
-  }
+  return (
+    <div className="flex justify-center items-center h-[80vh]">
+      <div className="w-10 h-10 border-4 border-green-500 border-b-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+}
+
 
   return (
     <div className="w-full">
@@ -134,41 +134,111 @@ const Home = () => {
       {/* Quick Actions */}
       {isAuthenticated && user && (
         <div className="mt-12 px-4 text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-6">Quick Actions</h2>
+
+          {/* Hero Section Like Image */}
+          <div className="relative bg-white py-10 sm:py-24 lg:py-32">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center px-4 lg:px-8">
+              
+              {/* LEFT TEXT SECTION */}
+              <div>
+                <h2 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+                  Your favorite food, just a few clicks away
+                </h2>
+                <p className="mt-6 text-lg leading-8 text-gray-600">
+                  Discover an array of highly-rated local dining options that cater to every craving.
+                  Indulge in delicious meals from your favorite restaurants, all while enjoying the
+                  convenience of prompt and reliable delivery right to your doorstep. Experience the
+                  joy of great food without the hassle, making every meal a delightful occasion.
+                </p>
+
+                {/* Stats */}
+                <div className="mt-10 grid grid-cols-3 gap-6 text-center">
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900">5K+</p>
+                    <p className="text-gray-600 text-sm">Satisfied Customer</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900">15+</p>
+                    <p className="text-gray-600 text-sm">Best Restaurants</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900">10K+</p>
+                    <p className="text-gray-600 text-sm">Food Delivered</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT IMAGE SECTION */}
+              <div className="flex justify-center relative">
+                <div className="bg-gradient-to-b from-pink-100 to-pink-200 rounded-3xl p-6">
+                  <img
+                    src="/boy.png"
+                    alt="Delivery Guy"
+                    className="w-72 h-auto object-cover"
+                  />
+                  {/* Floating buttons */}
+                  <div className="absolute top-10 right-5 flex flex-col gap-3">
+                    <button className="bg-white shadow px-4 py-2 rounded-full text-gray-800 font-medium">
+                      Burgers
+                    </button>
+                    <button className="bg-white shadow px-4 py-2 rounded-full text-gray-800 font-medium">
+                      Steaks
+                    </button>
+                    <button className="bg-white shadow px-4 py-2 rounded-full text-gray-800 font-medium">
+                      Pizza
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <h2 className="text-4xl font-bold text-gray-900 mb-6 mt-4">Our Services</h2> 
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {quickActions.map((action, idx) =>
-              action.isExternal ? (
-                <a
-                  key={idx}
-                  href={action.href}
-                  className="block p-6 bg-white rounded-lg border border-gray-200 shadow-md hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 ${action.bg} rounded-full`}>{action.icon}</div>
-                    <div>
-                      <h3 className="text-lg font-semibold">{action.title}</h3>
-                      <p className="text-gray-600">{action.desc}</p>
-                    </div>
-                  </div>
-                </a>
-              ) : (
-                <Link
-                  key={idx}
-                  to={action.to}
-                  className="block p-6 bg-white rounded-lg border border-gray-200 shadow-md hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 ${action.bg} rounded-full`}>{action.icon}</div>
-                    <div>
-                      <h3 className="text-lg font-semibold">{action.title}</h3>
-                      <p className="text-gray-600">{action.desc}</p>
-                    </div>
-                  </div>
-                </Link>
-              )
-            )}
-          </div>
+            action.isExternal ? (
+            <a
+              key={idx}
+              href={action.href}
+              className={`block p-8 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1 ${action.bg}`}
+            >
+              <div className="flex items-start gap-5 ">
+                {/* Title + Desc on the right */}
+                <div className="flex flex-col text-left">
+                  <h3 className="text-lg font-semibold text-gray-900">{action.title}</h3>
+                  <p className="mt-1 text-sm text-gray-600">{action.desc}</p>
+                </div>
+
+                {/* Icon on the left */}
+                <div className="flex h-12 w-12 items-center justify-center ">
+                  <span className="text-2xl text-black">{action.icon}</span>
+                </div>
+              </div>
+            </a>
+           ) : (
+          <Link
+            key={idx}
+            to={action.to}
+            className={`block p-8 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1 ${action.bg}`}
+          >
+            <div className="flex items-start gap-5 ">
+              {/* Title + Desc on the right */}
+              <div className="flex flex-col text-left">
+                <h3 className="text-lg font-semibold text-gray-900">{action.title}</h3>
+                <p className="mt-1 text-sm text-gray-600">{action.desc}</p>
+              </div>
+
+              {/* Icon on the left */}
+              <div className="flex h-12 w-12 items-center justify-center ">
+                <span className="text-2xl text-black">{action.icon}</span>
+              </div>
+            </div>
+          </Link>
+            )
+          )}
         </div>
+      </div>
       )}
     </div>
   );

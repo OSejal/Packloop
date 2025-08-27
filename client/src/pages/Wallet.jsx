@@ -77,60 +77,67 @@ const handleRazorpayScreen = async (amount) => {
     }
 
     setIsSubmitting(true);
+    console.log(" Initiating payment for amount:", amount);
 
     const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) throw new Error("Failed to load Razorpay checkout script");
 
-    const amountInPaise = Math.floor(Number(amount) * 100); // convert rupees to paise
+    const amountInPaise = Math.floor(Number(amount) * 100);
+    console.log(" Amount in Paise:", amountInPaise);
 
-    // Create Razorpay order from backend
     const orderResponse = await api.post("/api/payments/create-order", {
-      amount: Number(amount),
+      amount: amountInPaise,
       currency: "INR",
     });
+
+    console.log(" Order Response:", orderResponse.data);
     const order = orderResponse.data;
 
     if (!order || !order.id) throw new Error("Failed to create payment order");
 
-    // Open Razorpay checkout
     const options = {
-      key: import.meta.env.RAZORPAY_KEY_ID,
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: amountInPaise,
       currency: order.currency,
       order_id: order.id,
       name: "Sejal Sinha",
       description: "Wallet top-up",
       handler: async function (response) {
+        console.log(" Razorpay Handler Response:", response);
         try {
-          const verifyRes = await api.post('/api/payments/verify', {
+          const verifyRes = await api.post("/api/payments/verify", {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
-            amount: Number(amount) // in rupees
+            amount: Number(amount),
           });
+
+          console.log(" Verify API Response:", verifyRes.data);
 
           if (verifyRes.data.success) {
             toast.success("Funds added successfully!");
             setShowAddFundsModal(false);
-            setAddFundsForm({ amount: '', paymentMethod: 'UPI' });
+            setAddFundsForm({ amount: "", paymentMethod: "UPI" });
             await fetchData();
           } else {
             toast.error("Payment verification failed");
           }
         } catch (err) {
-          console.error("Payment verification error:", err.response?.data || err.message || err);
+          console.error(" Payment verification error:", err.response?.data || err.message || err);
           toast.error("Error verifying payment");
         }
       },
-      prefill: { name: user.name || 'User', email: user.email || '' },
-      theme: { color: "#F4C430" }
+      prefill: { name: user.name || "User", email: user.email || "" },
+      theme: { color: "#F4C430" },
     };
+
+    console.log(" Razorpay Checkout Options:", options);
 
     const paymentObject = new window.Razorpay(options);
     paymentObject.open();
 
   } catch (error) {
-    console.error("handleRazorpayScreen error:", error.response?.data || error.message || error);
+    console.error(" handleRazorpayScreen error:", error.response?.data || error.message || error);
     toast.error(error.message || "Payment initialization failed");
   } finally {
     setIsSubmitting(false);
@@ -138,9 +145,7 @@ const handleRazorpayScreen = async (amount) => {
 };
 
 
-
-
-  // const paymentFetch = async (e) => {
+// const paymentFetch = async (e) => {
   //   e.preventDefault();
   //   try {
   //     const paymentId = e.target.paymentId.value;
@@ -152,64 +157,74 @@ const handleRazorpayScreen = async (amount) => {
   //   }
   // };
 
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+const fetchData = useCallback(async () => {
+  try {
+    setIsLoading(true);
+    setError(null);
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Please login to access your wallet');
-        navigate('/login');
-        return;
-      }
-
-      const [walletResponse, transactionsResponse] = await Promise.all([
-        walletService.getWallet(),
-        walletService.getTransactions(filters)
-      ]);
-
-      if (walletResponse.data?.success) setWalletData(walletResponse.data.data || { balance: 0 });
-      else console.error('Wallet fetch failed', walletResponse.data);
-
-      if (Array.isArray(transactionsResponse.data?.transactions)) setTransactions(transactionsResponse.data.transactions);
-      else console.error('Transactions fetch invalid', transactionsResponse.data);
-
-    } catch (error) {
-      console.error('fetchData', error);
-      if (error.response?.status === 401) {
-        toast.error('Session expired. Please login again.');
-        navigate('/login');
-      } else {
-        setError('Failed to load wallet data');
-        toast.error('Failed to load wallet data');
-      }
-    } finally {
-      setIsLoading(false);
-      setIsTransactionsLoading(false);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Please login to access your wallet');
+      navigate('/login');
+      return;
     }
-  }, [filters, navigate]);
+
+    const [walletResponse, transactionsResponse] = await Promise.all([
+      walletService.getWallet(),
+      walletService.getTransactions(filters)
+    ]);
+
+    console.log("Wallet API response:", walletResponse);
+    console.log("Transactions API response:", transactionsResponse);
+
+    if (walletResponse.data?.success) setWalletData(walletResponse.data.data || { balance: 0 });
+    else console.error('Wallet fetch failed', walletResponse.data);
+
+    if (Array.isArray(transactionsResponse.data?.transactions)) setTransactions(transactionsResponse.data.transactions);
+    else console.error('Transactions fetch invalid', transactionsResponse.data);
+
+  } catch (error) {
+    console.error('fetchData error:', error);
+    if (error.response?.status === 401) {
+      toast.error('Session expired. Please login again.');
+      navigate('/login');
+    } else {
+      setError('Failed to load wallet data');
+      toast.error('Failed to load wallet data');
+    }
+  } finally {
+    setIsLoading(false);
+    setIsTransactionsLoading(false);
+  }
+}, [filters, navigate]);
+
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const validateAmount = (amount) => {
-    const num = Number(amount);
-    if (isNaN(num) || num <= 0) throw new Error('Please enter a valid amount greater than 0');
-    if (num > 100000) throw new Error('Amount cannot exceed ₹1,00,000');
-    return true;
-  };
+  console.log("Validating amount:", amount);
+  const num = Number(amount);
+  if (isNaN(num) || num <= 0) throw new Error('Please enter a valid amount greater than 0');
+  if (num > 100000) throw new Error('Amount cannot exceed ₹1,00,000');
+  return num; // return the number
+};
 
   const handleAddFunds = async (e) => {
-    e.preventDefault();
-    try {
-      validateAmount(addFundsForm.amount);
-      const orderData = await createRazorpayOrder(Number(addFundsForm.amount));
-      handleRazorpayScreen(orderData); 
-    } catch (error) {
-      console.error("handleAddFunds", error);
-      toast.error(error.message || "Failed to add funds");
-    }
-  };
+  e.preventDefault();
+  try {
+    const amount = validateAmount(addFundsForm.amount); // now a number
+    console.log("Creating Razorpay order for amount:", amount);
+    
+    const orderData = await createRazorpayOrder(amount);
+    console.log("Razorpay order data:", orderData);
+
+    await handleRazorpayScreen(amount); // pass the number
+  } catch (error) {
+    console.error("handleAddFunds", error);
+    toast.error(error.message || "Failed to add funds");
+  }
+};
+
 
 
   const handleWithdraw = async (e) => {

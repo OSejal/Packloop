@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { partnerService } from "../services/api";
-import { FiUser, FiMail, FiLock, FiPhone, FiUserPlus } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock, FiPhone, FiUserPlus, FiEye, FiEyeOff } from 'react-icons/fi';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -17,6 +17,7 @@ const Register = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mcpPartners, setMcpPartners] = useState([]);
   const [isLoadingMcps, setIsLoadingMcps] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -176,6 +177,17 @@ const Register = () => {
                   value={formData.password}
                   onChange={handleChange}
                 />
+                 <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? (
+                      <FiEyeOff className="h-5 w-5" />
+                    ) : (
+                      <FiEye className="h-5 w-5" />
+                    )}
+                  </button>
               </div>
               {errors.password && <p className="text-sm text-red-600">{errors.password}</p>}
 
