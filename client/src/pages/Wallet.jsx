@@ -68,36 +68,17 @@ const Wallet = () => {
   }
 };
 
-
-const handleRazorpayScreen = async (amount) => {
+const handleRazorpayScreen = async (amount, order) => {
   try {
-    if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-
     setIsSubmitting(true);
-    console.log(" Initiating payment for amount:", amount);
-
     const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) throw new Error("Failed to load Razorpay checkout script");
 
-    const amountInPaise = Math.floor(Number(amount) * 100);
-    console.log(" Amount in Paise:", amountInPaise);
-
-    const orderResponse = await api.post("/api/payments/create-order", {
-      amount: amountInPaise,
-      currency: "INR",
-    });
-
-    console.log(" Order Response:", orderResponse.data);
-    const order = orderResponse.data;
-
-    if (!order || !order.id) throw new Error("Failed to create payment order");
+    if (!order || !order.id) throw new Error("Invalid order response");
 
     const options = {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-      amount: amountInPaise,
+      amount: amount * 100, // paise
       currency: order.currency,
       order_id: order.id,
       name: "Sejal Sinha",
@@ -109,7 +90,8 @@ const handleRazorpayScreen = async (amount) => {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
-            amount: Number(amount),
+            userId:  user.id,
+            amount: amount,     
           });
 
           console.log(" Verify API Response:", verifyRes.data);
@@ -131,8 +113,6 @@ const handleRazorpayScreen = async (amount) => {
       theme: { color: "#F4C430" },
     };
 
-    console.log(" Razorpay Checkout Options:", options);
-
     const paymentObject = new window.Razorpay(options);
     paymentObject.open();
 
@@ -143,6 +123,7 @@ const handleRazorpayScreen = async (amount) => {
     setIsSubmitting(false);
   }
 };
+
 
 
 // const paymentFetch = async (e) => {
@@ -209,22 +190,24 @@ const fetchData = useCallback(async () => {
   return num; // return the number
 };
 
-  const handleAddFunds = async (e) => {
+const handleAddFunds = async (e) => {
   e.preventDefault();
   try {
-    const amount = validateAmount(addFundsForm.amount); // now a number
+    const amount = validateAmount(addFundsForm.amount); // in rupees
     console.log("Creating Razorpay order for amount:", amount);
-    
-    const orderData = await createRazorpayOrder(amount);
+
+    // ✅ Create order ONCE here
+    const orderData = await createRazorpayOrder(amount * 100); // paise
     console.log("Razorpay order data:", orderData);
 
-    await handleRazorpayScreen(amount); // pass the number
+    // ✅ Pass order to Razorpay screen
+    await handleRazorpayScreen(amount, orderData);
+
   } catch (error) {
     console.error("handleAddFunds", error);
     toast.error(error.message || "Failed to add funds");
   }
 };
-
 
 
   const handleWithdraw = async (e) => {

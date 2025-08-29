@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { FiUser, FiMail, FiPhone, FiEdit, FiLock, FiSave } from 'react-icons/fi';
+import axios from "axios";
 
 const Profile = () => {
   const { user, updateProfile, changePassword } = useAuth();
@@ -69,33 +70,40 @@ const Profile = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleImageUpload = async (e) => {
+
+const handleImageUpload = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
   // Show preview immediately
   setPreview(URL.createObjectURL(file));
 
-  const formDataImg = new FormData();
-  formDataImg.append("file", file);
-  formDataImg.append("upload_preset", "partners_profile"); 
-
   try {
-    const res = await axios.post(
-      `https://api.cloudinary.com/v1_1/dwdau60x1/image/upload`,
-      formDataImg,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      }
-    );
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("No authentication token found.");
 
-    // Save URL in state
-    setFormData((prev) => ({ ...prev, image: res.data.secure_url }));
+    const formDataBackend = new FormData();
+    formDataBackend.append("name", formData.name);
+    formDataBackend.append("phone", formData.phone);
+    formDataBackend.append("image", file);
+
+    const fullUrl = `${import.meta.env.VITE_API_URL}/api/profile`;
+    console.log('Making request to:', fullUrl);
+    console.log('Token:', token);
+    
+    const res = await axios.post(fullUrl, formDataBackend, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    setFormData((prev) => ({
+      ...prev,
+      image: res.data.profile.image,
+    }));
     setIsImageUploaded(true);
-
-    // Ideally: also send URL to your backend
-    await axios.post("/api/save-image", { imageUrl: res.data.secure_url });
-
+    console.log("Image uploaded successfully!");
   } catch (err) {
     console.error("Image upload failed:", err.response?.data || err.message);
   }
@@ -169,7 +177,7 @@ const Profile = () => {
   if (!user) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <p className="text-gray-500">Loading profile...</p>
+        <div className="w-10 h-10 border-4 border-green-500 border-b-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -282,10 +290,11 @@ const Profile = () => {
                 <label htmlFor="fileInput" className="cursor-pointer">
                   {preview || formData.image ? (
                     <img
-                      src={preview || formData.image}
-                      alt="Uploaded preview"
+                      src={preview || formData.image || "/default-avatar.png"}
+                      alt="Profile"
                       className="w-28 h-28 rounded-full border-object-cover border-2 mb-5"
                     />
+
                   ) : (
                     <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
                       +
