@@ -54,7 +54,8 @@ exports.verifyToken = async (req, res, next) => {
             console.log('Authentication successful for user:', user.name);
             // Add user role to the request object
             req.user = {
-                ...decoded,
+                id: decoded.userId,  // Add this line to create req.user.id
+                userId: decoded.userId,
                 role: user.role
             };
             next();

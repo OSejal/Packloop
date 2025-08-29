@@ -26,6 +26,10 @@ const uploadToCloudinary = (fileBuffer) => {
 // Save / update profile
 exports.saveProfile = async (req, res) => {
   try {
+    console.log('req.user:', req.user); // Debug log
+    console.log('req.user.id:', req.user?.id); // Debug log
+    console.log('req.body:', req.body); // Debug log
+    
     const { name, phone } = req.body;
     let imageUrl;
 
