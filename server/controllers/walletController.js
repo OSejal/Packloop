@@ -167,7 +167,7 @@ exports.addFunds = async (req, res) => {
       metadata: { paymentMethod }
     };
 
-    // ✅ Update balance and save
+    // Update balance and save
     wallet.balance += Number(amount);
     wallet.transactions.push(transaction);
 

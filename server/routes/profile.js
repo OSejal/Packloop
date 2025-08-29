@@ -2,22 +2,24 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const profileController = require("../controllers/profileController");
-const { verifyToken, authorize } = require("../middleware/auth");
+const { verifyToken } = require("../middleware/auth");
 
-// ✅ Setup Multer (use memory storage if uploading to Cloudinary)
+// Memory storage for multer (for Cloudinary)
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+router.use((req, res, next) => {
+  console.log('Profile route hit:', req.method, req.originalUrl);
+  next();
+});
+
+// All profile routes require JWT
 router.use(verifyToken);
 
-router.get("/get", authorize, profileController.getProfile);
-router.post("/edit", authorize, profileController.saveProfile);
+// Get profile
+router.get("/", profileController.getProfile);
 
-// ✅ Use upload + correct controller function
-router.post(
-  "/profile",
-  upload.single("image"),
-  profileController.saveProfile
-);
+// Save / update profile with image
+router.post("/", upload.single("image"), profileController.saveProfile);
 
 module.exports = router;

@@ -1,69 +1,69 @@
-const User = require('../models/User');
-const Profile = require('../models/Profile');
-const cloudinary = require('cloudinary').v2;
+const Profile = require("../models/Profile");
+const cloudinary = require("cloudinary").v2;
+const streamifier = require("streamifier");
 
-// Upload image to Cloudinary helper
-const uploadToCloudinary = async (file) => {
-  try {
-    const result = await cloudinary.uploader.upload(file, {
-      folder: "profiles", // optional folder in cloudinary
-      resource_type: "auto"
-    });
-    return result.secure_url; // Cloudinary hosted URL
-  } catch (error) {
-    throw new Error("Image upload failed");
-  }
+// Cloudinary config
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_API_KEY,
+  api_secret: process.env.CLOUD_API_SECRET,
+});
+
+// Upload buffer to Cloudinary
+const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "profiles" },
+      (error, result) => {
+        if (result) resolve(result.secure_url);
+        else reject(error);
+      }
+    );
+    streamifier.createReadStream(fileBuffer).pipe(stream);
+  });
 };
 
-// Get user profile
-exports.getProfile = async (req, res) => {
-  try {
-    const profile = await Profile.findOne({ user: req.user.id }).populate("mcpId");
-    if (!profile) {
-      return res.status(404).json({ success: false, message: "Profile not found" });
-    }
-    res.status(200).json({ success: true, profile });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Error fetching profile", error: err.message });
-  }
-};
-
-// Create or update user profile
+// Save / update profile
 exports.saveProfile = async (req, res) => {
   try {
-    const { name, phone, role, mcpId } = req.body;
+    const { name, phone } = req.body;
     let imageUrl;
 
-    // Check if file uploaded
     if (req.file) {
-      imageUrl = await uploadToCloudinary(req.file.path);
+      imageUrl = await uploadToCloudinary(req.file.buffer);
     }
 
-    // Find existing profile
     let profile = await Profile.findOne({ user: req.user.id });
 
     if (profile) {
-      // Update existing profile
       profile.name = name || profile.name;
       profile.phone = phone || profile.phone;
       profile.image = imageUrl || profile.image;
-      profile.role = role || profile.role;
-      profile.mcpId = mcpId || profile.mcpId;
       await profile.save();
-      return res.status(200).json({ success: true, message: 'Profile updated successfully', profile });
+      return res.status(200).json({ success: true, profile });
     } else {
-      // Create new profile
       profile = await Profile.create({
         user: req.user.id,
         name,
         phone,
         image: imageUrl || "",
-        role,
-        mcpId,
       });
-      return res.status(201).json({ success: true, message: 'Profile created successfully', profile });
+      return res.status(201).json({ success: true, profile });
     }
   } catch (err) {
+    console.error("Error saving profile:", err);
     res.status(500).json({ success: false, message: "Error saving profile", error: err.message });
+  }
+};
+
+// Get profile
+exports.getProfile = async (req, res) => {
+  try {
+    const profile = await Profile.findOne({ user: req.user.id });
+    if (!profile) return res.status(404).json({ success: false, message: "Profile not found" });
+    res.status(200).json({ success: true, profile });
+  } catch (err) {
+    console.error("Error fetching profile:", err);
+    res.status(500).json({ success: false, message: "Error fetching profile", error: err.message });
   }
 };
