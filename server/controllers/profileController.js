@@ -30,7 +30,6 @@ exports.saveProfile = async (req, res) => {
     let imageUrl;
 
     if (req.file) {
-      console.log('File received:', req.file.originalname);
       imageUrl = await uploadToCloudinary(req.file.buffer);
       console.log('Cloudinary URL:', imageUrl); // Add this log
     }
@@ -42,7 +41,6 @@ exports.saveProfile = async (req, res) => {
       profile.phone = phone || profile.phone;
       profile.image = imageUrl || profile.image;
       
-      console.log('Updating profile with image:', profile.image); // Add this log
       await profile.save();
       console.log('Profile saved successfully'); // Add this log
       

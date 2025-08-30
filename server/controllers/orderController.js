@@ -185,6 +185,181 @@ exports.updateOrderStatus = async (req, res) => {
         });
     }
 };
+// Add these methods to your existing orderController.js
+
+// Get order location for real-time tracking
+exports.getOrderLocation = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+
+        const order = await Order.findById(orderId).select('currentLocation mcpId pickupPartnerId');
+        
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found'
+            });
+        }
+
+        // Validate access - only MCP, assigned pickup partner, or customer can view location
+        const user = await User.findById(req.user.userId);
+        const hasAccess = 
+            (user.role === 'MCP' && order.mcpId.toString() === user._id.toString()) ||
+            (user.role === 'PICKUP_PARTNER' && order.pickupPartnerId?.toString() === user._id.toString()) ||
+            (user.role === 'CUSTOMER'); // Customers can track their orders
+
+        if (!hasAccess) {
+            return res.status(403).json({
+                success: false,
+                message: 'Unauthorized to view order location'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                location: order.currentLocation || null
+            }
+        });
+    } catch (error) {
+        console.error('Get order location error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching order location',
+            error: error.message
+        });
+    }
+};
+
+// Update order location (for MCP real-time sharing)
+exports.updateOrderLocation = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { latitude, longitude } = req.body;
+
+        // Validate input
+        if (!latitude || !longitude) {
+            return res.status(400).json({
+                success: false,
+                message: 'Latitude and longitude are required'
+            });
+        }
+
+        const order = await Order.findById(orderId);
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found'
+            });
+        }
+
+        // Validate access - only MCP or assigned pickup partner can update location
+        const user = await User.findById(req.user.userId);
+        const canUpdateLocation = 
+            (user.role === 'MCP' && order.mcpId.toString() === user._id.toString()) ||
+            (user.role === 'PICKUP_PARTNER' && order.pickupPartnerId?.toString() === user._id.toString());
+
+        if (!canUpdateLocation) {
+            return res.status(403).json({
+                success: false,
+                message: 'Unauthorized to update order location'
+            });
+        }
+
+        // Update location using the schema method
+        await order.updateLocation(latitude, longitude);
+
+        res.json({
+            success: true,
+            message: 'Location updated successfully',
+            data: {
+                location: order.currentLocation
+            }
+        });
+    } catch (error) {
+        console.error('Update order location error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating order location',
+            error: error.message
+        });
+    }
+};
+
+// Update the existing updateOrderStatus method to handle frontend status values
+exports.updateOrderStatusV2 = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { orderId } = req.params; // Get from URL params instead of body
+        const { status, notes } = req.body;
+
+        // Validate status value matches frontend enum
+        const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+        if (!validStatuses.includes(status)) {
+            throw new Error('Invalid status value');
+        }
+
+        // Find order and validate access
+        const order = await Order.findById(orderId);
+        if (!order) {
+            throw new Error('Order not found');
+        }
+
+        const user = await User.findById(req.user.userId);
+        
+        // Only MCP can update status (based on your frontend logic)
+        if (user.role !== 'MCP' || order.mcpId.toString() !== user._id.toString()) {
+            throw new Error('Unauthorized to update this order');
+        }
+
+        // Update order status
+        await order.updateStatus(status, notes);
+
+        // If order is delivered, process payment
+        if (status === 'DELIVERED') {
+            if (order.pickupPartnerId) {
+                const partnerWallet = await Wallet.findOne({ userId: order.pickupPartnerId });
+                if (partnerWallet) {
+                    await partnerWallet.addTransaction({
+                        type: 'DEBIT',
+                        amount: order.amount,
+                        description: `Payment for order ${order._id}`,
+                        reference: `ORD-${order._id}`,
+                        status: 'COMPLETED',
+                        metadata: {
+                            orderId: order._id
+                        }
+                    });
+                }
+            }
+
+            // Update order payment status
+            order.paymentStatus = 'COMPLETED';
+            await order.save();
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.json({
+            success: true,
+            message: 'Order status updated successfully',
+            data: { order }
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+
+        console.error('Update order status error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Error updating order status',
+            error: error.message
+        });
+    }
+};
 
 // Get orders with filters
 exports.getOrders = async (req, res) => {

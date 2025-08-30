@@ -13,7 +13,6 @@ router.use((req, res, next) => {
   next();
 });
 
-
 router.use(verifyToken);
 
 // Get profile

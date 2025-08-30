@@ -17,7 +17,7 @@ const orderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+        enum: ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'], // Updated for frontend compatibility
         default: 'PENDING'
     },
     pickupLocation: {
@@ -38,7 +38,19 @@ const orderSchema = new mongoose.Schema({
             landmark: String
         }
     },
+    // Current location for real-time tracking (what MCP shares)
+    currentLocation: {
+        latitude: Number,
+        longitude: Number,
+        updatedAt: Date
+    },
     amount: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    // Add totalAmount field that frontend expects
+    totalAmount: {
         type: Number,
         required: true,
         min: 0
@@ -58,7 +70,7 @@ const orderSchema = new mongoose.Schema({
     statusHistory: [{
         status: {
             type: String,
-            enum: ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']
+            enum: ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] // Updated enum
         },
         timestamp: {
             type: Date,
@@ -95,7 +107,7 @@ orderSchema.pre('save', function(next) {
     next();
 });
 
-// Method to update order status
+// Updated method to handle new status values
 orderSchema.methods.updateStatus = function(newStatus, note = '') {
     this.status = newStatus;
     this.statusHistory.push({
@@ -103,19 +115,29 @@ orderSchema.methods.updateStatus = function(newStatus, note = '') {
         note: note
     });
     
-    if (newStatus === 'COMPLETED') {
+    if (newStatus === 'DELIVERED') { // Changed from 'COMPLETED' to 'DELIVERED'
         this.completedTime = Date.now();
     }
     
     return this.save();
 };
 
+// Method to update current location (for MCP real-time sharing)
+orderSchema.methods.updateLocation = function(latitude, longitude) {
+    this.currentLocation = {
+        latitude,
+        longitude,
+        updatedAt: Date.now()
+    };
+    return this.save();
+};
+
 // Method to assign pickup partner
 orderSchema.methods.assignPartner = function(partnerId) {
     this.pickupPartnerId = partnerId;
-    this.status = 'ASSIGNED';
+    this.status = 'PROCESSING'; // Changed from 'ASSIGNED' to match frontend enum
     this.statusHistory.push({
-        status: 'ASSIGNED',
+        status: 'PROCESSING',
         note: `Assigned to partner ${partnerId}`
     });
     
@@ -123,4 +145,4 @@ orderSchema.methods.assignPartner = function(partnerId) {
 };
 
 const Order = mongoose.model('Order', orderSchema);
-module.exports = Order; 
+module.exports = Order;
