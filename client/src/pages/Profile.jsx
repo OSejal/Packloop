@@ -156,8 +156,24 @@ const Profile = () => {
         }
       } else {
         // No new image, just update profile data
-        const result = await updateProfile(formData);
-        if (!result.success) throw new Error(result.message);
+        const token = localStorage.getItem("token");
+        const res = await axios.put(
+          `${import.meta.env.VITE_API_URL}/api/profile`,
+          {
+            name: formData.name,
+            phone: formData.phone,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        
+        if (res.data.success) {
+          imageUrl = res.data.profile.image;
+        }
       }
       
       // Update form data with new image URL
