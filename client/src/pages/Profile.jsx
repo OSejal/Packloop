@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { FiUser, FiMail, FiPhone, FiEdit, FiLock, FiSave } from 'react-icons/fi';
 import axios from "axios";
+import { useEffect } from 'react';
 
 const Profile = () => {
   const { user, updateProfile, changePassword } = useAuth();
