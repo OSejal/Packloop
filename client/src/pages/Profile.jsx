@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { FiUser, FiMail, FiPhone, FiEdit, FiLock, FiSave } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiEdit, FiLock, FiSave, FiCamera } from 'react-icons/fi';
 import axios from "axios";
-import { useEffect } from 'react';
 
 const Profile = () => {
   const { user, updateProfile, changePassword } = useAuth();
@@ -18,10 +17,51 @@ const Profile = () => {
     confirmPassword: '',
   });
   const [preview, setPreview] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null); // Added missing state
   const [isImageUploaded, setIsImageUploaded] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load profile data when component mounts
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/profile`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (response.data.success && response.data.profile) {
+          const profile = response.data.profile;
+          
+          // Set form data
+          setFormData({
+            name: profile.name || '',
+            phone: profile.phone || '',
+            image: profile.image || '',
+          });
+          
+          // Set image preview if image exists
+          if (profile.image) {
+            setPreview(profile.image);
+            setIsImageUploaded(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        if (error.response?.status === 404) {
+          console.log("No profile found - user needs to create one");
+        }
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -45,7 +85,6 @@ const Profile = () => {
       [name]: value,
     });
     
-    // Clear error when user types
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -71,107 +110,66 @@ const Profile = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-// Add this useEffect to load profile data when component mounts
-useEffect(() => {
-  const fetchProfile = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (response.data.success && response.data.profile) {
-        const profile = response.data.profile;
-        
-        // Set form data
-        setFormData({
-          name: profile.name || '',
-          phone: profile.phone || '',
-          image: profile.image || '',
-        });
-        
-        // Set image preview if image exists
-        if (profile.image) {
-          setPreview(profile.image);
-          setIsImageUploaded(true);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-      // Handle case where profile doesn't exist yet
-      if (error.response?.status === 404) {
-        console.log("No profile found - user needs to create one");
-      }
-    }
+    // Show preview immediately
+    setPreview(URL.createObjectURL(file));
+    setSelectedFile(file); // Store the file for later upload
+    setIsImageUploaded(false); // Mark as not uploaded yet
   };
 
-  fetchProfile();
-}, []); // Empty dependency array means this runs once when component mounts
-
-const handleImageUpload = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  // Just show preview - don't upload yet
-  setPreview(URL.createObjectURL(file));
-  setSelectedFile(file); // Store the file for later upload
-  setIsImageUploaded(false); // Mark as not uploaded yet
-};
-
-const handleSubmitProfile = async (e) => {
-  e.preventDefault();
-  
-  if (!validateProfile()) return;
-  
-  setIsSubmitting(true);
-  
-  try {
-    let imageUrl = formData.image; // Keep existing image URL
+  const handleSubmitProfile = async (e) => {
+    e.preventDefault();
     
-    // If there's a new file selected, upload it
-    if (selectedFile) {
-      const token = localStorage.getItem("token");
-      const formDataBackend = new FormData();
-      formDataBackend.append("name", formData.name);
-      formDataBackend.append("phone", formData.phone);
-      formDataBackend.append("image", selectedFile);
-
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/profile`,
-        formDataBackend,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+    if (!validateProfile()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      let imageUrl = formData.image; // Keep existing image URL
       
-      if (res.data.success) {
-        imageUrl = res.data.profile.image;
-        setIsImageUploaded(true);
-        setSelectedFile(null); // Clear selected file
+      // If there's a new file selected, upload it
+      if (selectedFile) {
+        const token = localStorage.getItem("token");
+        const formDataBackend = new FormData();
+        formDataBackend.append("name", formData.name);
+        formDataBackend.append("phone", formData.phone);
+        formDataBackend.append("image", selectedFile);
+
+        const res = await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/profile`,
+          formDataBackend,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        
+        if (res.data.success) {
+          imageUrl = res.data.profile.image;
+          setIsImageUploaded(true);
+          setSelectedFile(null); // Clear selected file
+        }
+      } else {
+        // No new image, just update profile data
+        const result = await updateProfile(formData);
+        if (!result.success) throw new Error(result.message);
       }
-    } else {
-      // No new image, just update profile data
-      const result = await updateProfile(formData);
-      if (!result.success) throw new Error(result.message);
+      
+      // Update form data with new image URL
+      setFormData(prev => ({ ...prev, image: imageUrl }));
+      setIsEditing(false);
+      
+    } catch (error) {
+      console.error("Profile update failed:", error);
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    // Update form data with new image URL
-    setFormData(prev => ({ ...prev, image: imageUrl }));
-    setIsEditing(false);
-    
-  } catch (error) {
-    console.error("Profile update failed:", error);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   const validatePassword = () => {
     const newErrors = {};
@@ -193,23 +191,6 @@ const handleSubmitProfile = async (e) => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
-  // const handleSubmitProfile = async (e) => {
-  //   e.preventDefault();
-    
-  //   if (!validateProfile()) return;
-    
-  //   setIsSubmitting(true);
-    
-  //   try {
-  //     const result = await updateProfile(formData);
-  //     if (result.success) {
-  //       setIsEditing(false);
-  //     }
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
 
   const handleSubmitPassword = async (e) => {
     e.preventDefault();
@@ -264,7 +245,41 @@ const handleSubmitProfile = async (e) => {
           
           {isEditing ? (
             <form onSubmit={handleSubmitProfile}>
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Image Upload Section - Now in Edit Mode */}
+                <div className="flex flex-col items-center">
+                  <div className="relative">
+                    <label htmlFor="fileInput" className="cursor-pointer group">
+                      {preview || formData.image ? (
+                        <img
+                          src={preview || formData.image}
+                          alt="Profile"
+                          className="w-32 h-32 rounded-full object-cover border-2 border-gray-300 group-hover:border-blue-500 transition-colors"
+                        />
+                      ) : (
+                        <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-300 group-hover:border-blue-500 transition-colors">
+                          <FiCamera className="w-8 h-8" />
+                        </div>
+                      )}
+                      {/* Overlay for edit indication */}
+                      <div className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <FiCamera className="w-6 h-6 text-white" />
+                      </div>
+                    </label>
+                    <input
+                      type="file"
+                      id="fileInput"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">Click to change profile picture</p>
+                  {selectedFile && (
+                    <p className="mt-1 text-sm text-blue-600">New image selected - will be uploaded when you save</p>
+                  )}
+                </div>
+
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                     Full Name
@@ -339,7 +354,11 @@ const handleSubmitProfile = async (e) => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      setIsEditing(false);
+                      setSelectedFile(null); // Clear selected file on cancel
+                      setPreview(formData.image); // Reset preview to saved image
+                    }}
                     className="inline-flex justify-center items-center gap-2 rounded-md bg-gray-100 px-3.5 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200"
                   >
                     Cancel
@@ -350,55 +369,44 @@ const handleSubmitProfile = async (e) => {
           ) : (
             <div className="flex flex-row gap-20">
               <div className="flex flex-col items-center">
-                <label htmlFor="fileInput" className="cursor-pointer">
-                  {preview || formData.image ? (
-                    <img
-                      src={preview || formData.image || "/default-avatar.png"}
-                      alt="Profile"
-                      className="w-28 h-28 rounded-full border-object-cover border-2 mb-5"
-                    />
-
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                      +
-                    </div>
-                  )}
-                </label>
-                <input
-                  type="file"
-                  id="fileInput"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  disabled={isImageUploaded}
-                />
+                {preview || formData.image ? (
+                  <img
+                    src={preview || formData.image}
+                    alt="Profile"
+                    className="w-32 h-32 rounded-full object-cover border-2 border-gray-300"
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                    <FiUser className="w-8 h-8" />
+                  </div>
+                )}
               </div>
 
               <div className='flex flex-col gap-2'> 
-              <div className="flex items-center">
-                <span className="w-32 text-sm font-medium text-green-500">Name:</span>
-                <span className="text-md text-gray-900">{user.name}</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-32 text-sm font-medium text-green-500">Email:</span>
-                <span className="text-md text-gray-900 mr-10">{user.email}</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-32 text-sm font-medium text-green-500">Phone:</span>
-                <span className="text-md text-gray-900">{user.phone}</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-32 text-sm font-medium text-green-500">Role:</span>
-                <span className="text-md text-gray-900">
-                  {user.role === 'MCP' ? 'MCP (Material Collection Point)' : 'Pickup Partner'}
-                </span>
-              </div>
-              {user.role === 'PICKUP_PARTNER' && user.mcpId && (
                 <div className="flex items-center">
-                  <span className="w-32 text-sm font-medium text-gray-500">MCP Partner:</span>
-                  <span className="text-md text-gray-900">{user.mcpId.name}</span>
+                  <span className="w-32 text-sm font-medium text-green-500">Name:</span>
+                  <span className="text-md text-gray-900">{formData.name || user.name}</span>
                 </div>
-              )}
+                <div className="flex items-center">
+                  <span className="w-32 text-sm font-medium text-green-500">Email:</span>
+                  <span className="text-md text-gray-900 mr-10">{user.email}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-32 text-sm font-medium text-green-500">Phone:</span>
+                  <span className="text-md text-gray-900">{formData.phone || user.phone}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-32 text-sm font-medium text-green-500">Role:</span>
+                  <span className="text-md text-gray-900">
+                    {user.role === 'MCP' ? 'MCP (Material Collection Point)' : 'Pickup Partner'}
+                  </span>
+                </div>
+                {user.role === 'PICKUP_PARTNER' && user.mcpId && (
+                  <div className="flex items-center">
+                    <span className="w-32 text-sm font-medium text-gray-500">MCP Partner:</span>
+                    <span className="text-md text-gray-900">{user.mcpId.name}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -505,4 +513,4 @@ const handleSubmitProfile = async (e) => {
   );
 };
 
-export default Profile; 
+export default Profile;
