@@ -70,45 +70,107 @@ const Profile = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+// Add this useEffect to load profile data when component mounts
+useEffect(() => {
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
-const handleImageUpload = async (e) => {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (response.data.success && response.data.profile) {
+        const profile = response.data.profile;
+        
+        // Set form data
+        setFormData({
+          name: profile.name || '',
+          phone: profile.phone || '',
+          image: profile.image || '',
+        });
+        
+        // Set image preview if image exists
+        if (profile.image) {
+          setPreview(profile.image);
+          setIsImageUploaded(true);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      // Handle case where profile doesn't exist yet
+      if (error.response?.status === 404) {
+        console.log("No profile found - user needs to create one");
+      }
+    }
+  };
+
+  fetchProfile();
+}, []); // Empty dependency array means this runs once when component mounts
+
+const handleImageUpload = (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  // Show preview immediately
+  // Just show preview - don't upload yet
   setPreview(URL.createObjectURL(file));
-
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No authentication token found.");
-
-    const formDataBackend = new FormData();
-    formDataBackend.append("name", formData.name);
-    formDataBackend.append("phone", formData.phone);
-    formDataBackend.append("image", file);
-
-    const fullUrl = `${import.meta.env.VITE_API_URL}/api/profile`;
-    console.log('Making request to:', fullUrl);
-    console.log('Token:', token);
-    
-    const res = await axios.post(fullUrl, formDataBackend, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
-    });
-
-    setFormData((prev) => ({
-      ...prev,
-      image: res.data.profile.image,
-    }));
-    setIsImageUploaded(true);
-    console.log("Image uploaded successfully!");
-  } catch (err) {
-    console.error("Image upload failed:", err.response?.data || err.message);
-  }
+  setSelectedFile(file); // Store the file for later upload
+  setIsImageUploaded(false); // Mark as not uploaded yet
 };
 
+const handleSubmitProfile = async (e) => {
+  e.preventDefault();
+  
+  if (!validateProfile()) return;
+  
+  setIsSubmitting(true);
+  
+  try {
+    let imageUrl = formData.image; // Keep existing image URL
+    
+    // If there's a new file selected, upload it
+    if (selectedFile) {
+      const token = localStorage.getItem("token");
+      const formDataBackend = new FormData();
+      formDataBackend.append("name", formData.name);
+      formDataBackend.append("phone", formData.phone);
+      formDataBackend.append("image", selectedFile);
+
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/profile`,
+        formDataBackend,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      
+      if (res.data.success) {
+        imageUrl = res.data.profile.image;
+        setIsImageUploaded(true);
+        setSelectedFile(null); // Clear selected file
+      }
+    } else {
+      // No new image, just update profile data
+      const result = await updateProfile(formData);
+      if (!result.success) throw new Error(result.message);
+    }
+    
+    // Update form data with new image URL
+    setFormData(prev => ({ ...prev, image: imageUrl }));
+    setIsEditing(false);
+    
+  } catch (error) {
+    console.error("Profile update failed:", error);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const validatePassword = () => {
     const newErrors = {};
@@ -131,22 +193,22 @@ const handleImageUpload = async (e) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmitProfile = async (e) => {
-    e.preventDefault();
+  // const handleSubmitProfile = async (e) => {
+  //   e.preventDefault();
     
-    if (!validateProfile()) return;
+  //   if (!validateProfile()) return;
     
-    setIsSubmitting(true);
+  //   setIsSubmitting(true);
     
-    try {
-      const result = await updateProfile(formData);
-      if (result.success) {
-        setIsEditing(false);
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  //   try {
+  //     const result = await updateProfile(formData);
+  //     if (result.success) {
+  //       setIsEditing(false);
+  //     }
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   const handleSubmitPassword = async (e) => {
     e.preventDefault();
