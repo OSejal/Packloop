@@ -26,15 +26,13 @@ const uploadToCloudinary = (fileBuffer) => {
 // Save / update profile
 exports.saveProfile = async (req, res) => {
   try {
-    console.log('req.user:', req.user); // Debug log
-    console.log('req.user.id:', req.user?.id); // Debug log
-    console.log('req.body:', req.body); // Debug log
-    
     const { name, phone } = req.body;
     let imageUrl;
 
     if (req.file) {
+      console.log('File received:', req.file.originalname);
       imageUrl = await uploadToCloudinary(req.file.buffer);
+      console.log('Cloudinary URL:', imageUrl); // Add this log
     }
 
     let profile = await Profile.findOne({ user: req.user.id });
@@ -43,7 +41,11 @@ exports.saveProfile = async (req, res) => {
       profile.name = name || profile.name;
       profile.phone = phone || profile.phone;
       profile.image = imageUrl || profile.image;
+      
+      console.log('Updating profile with image:', profile.image); // Add this log
       await profile.save();
+      console.log('Profile saved successfully'); // Add this log
+      
       return res.status(200).json({ success: true, profile });
     } else {
       profile = await Profile.create({
@@ -52,6 +54,7 @@ exports.saveProfile = async (req, res) => {
         phone,
         image: imageUrl || "",
       });
+      console.log('New profile created with image:', profile.image); // Add this log
       return res.status(201).json({ success: true, profile });
     }
   } catch (err) {
