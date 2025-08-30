@@ -12,7 +12,6 @@ import {
   FiPlay,
   FiPause,
 } from "react-icons/fi";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { orderService } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -20,54 +19,15 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
 import Button from "../components/Button";
 import { toast } from "react-hot-toast";
-
-// --- Optional: better default marker icon for Leaflet in bundlers ---
-const DefaultIcon = L.icon({
-  iconUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
-
-// Small map component
-const OrderTrackingMap = ({ location }) => {
-  if (!location?.latitude || !location?.longitude) {
-    return (
-      <div className="text-sm text-gray-500 border rounded p-3">
-        Waiting for live location…
-      </div>
-    );
-  }
-
-  const center = [location.latitude, location.longitude];
-
-  return (
-    <div className="w-full h-64 rounded overflow-hidden">
-      <MapContainer
-        center={center}
-        zoom={15}
-        className="h-full w-full"
-        scrollWheelZoom={false}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Marker position={center}>
-          <Popup>Delivery partner is here 🚚</Popup>
-        </Marker>
-      </MapContainer>
-    </div>
-  );
-};
+import MapView from "../components/MapView";
 
 const Orders = () => {
   const { user } = useAuth();
 
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [orderLocation, setOrderLocation] = useState(null);
+  const pollRef = useRef(null);
 
   // details modal
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -81,9 +41,8 @@ const Orders = () => {
   const [newStatus, setNewStatus] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // live tracking state (viewing)
-  const [orderLocation, setOrderLocation] = useState(null);
-  const pollRef = useRef(null);
+  // MapView modal state
+  const [showMapView, setShowMapView] = useState(false);
 
   // live tracking state (sharing for MCP)
   const [isSharing, setIsSharing] = useState(false);
@@ -93,11 +52,9 @@ const Orders = () => {
   // Fetch orders
   useEffect(() => {
     fetchOrders();
-    // cleanup (stop sharing if page unmounts)
     return () => {
       stopSharingLocation();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchOrders = async () => {
@@ -157,6 +114,15 @@ const Orders = () => {
     statusFilter === "ALL"
       ? orders
       : orders.filter((o) => o.status === statusFilter);
+
+  // Show MapView modal
+  const handleTrackOrder = () => {
+    setShowMapView(true);
+  };
+
+  const closeMapView = () => {
+    setShowMapView(false);
+  };
 
   // View details + start polling location
   const handleViewDetails = (orderId) => {
@@ -291,9 +257,9 @@ const Orders = () => {
             <h2 className="text-xl font-semibold">Your Orders</h2>
 
             <div className="relative flex items-center gap-3">
-              {/* (Optional) CTA — you can repurpose this or remove */}
+              {/* Track Order Button - Opens MapView */}
               <Button
-                onClick={() => toast("Enter an order to track")}
+                onClick={handleTrackOrder}
                 variant="primary"
                 icon={<FiUserPlus />}
               >
@@ -321,34 +287,21 @@ const Orders = () => {
           </div>
         </div>
 
+        {/* Orders Table/List would go here */}
         {filteredOrders.length === 0 ? (
           <EmptyState
-            title={
-              statusFilter === "ALL" ? "No orders yet" : `No ${statusFilter.toLowerCase()} orders`
-            }
-            description={
-              statusFilter === "ALL"
-                ? "You haven't placed any orders yet"
-                : `You don't have any orders with status "${statusFilter.toLowerCase()}"`
-            }
-            icon={<FiPackage className="w-12 h-12 text-gray-400 ml-20" />}
-            actionButton={
-              statusFilter !== "ALL" ? (
-                <Button onClick={() => setStatusFilter("ALL")} variant="outline" icon={<FiFilter />}>
-                  Show All Orders
-                </Button>
-              ) : null
-            }
+            icon={<FiPackage />}
+            title="No Orders Found"
+            description="You haven't placed any orders yet."
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  {tableHeaders.map((header, index) => (
+                  {tableHeaders.map((header) => (
                     <th
-                      key={index}
-                      scope="col"
+                      key={header}
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       {header}
@@ -358,64 +311,33 @@ const Orders = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredOrders.map((order) => (
-                  <tr key={order._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        #{order._id.substring(order._id.length - 8)}
-                      </div>
+                  <tr key={order._id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      #{order._id.slice(-8)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{formatDate(order.createdAt)}</div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(order.createdAt)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {formatAmount(order.totalAmount)}
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatAmount(order.totalAmount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
                           order.status
                         )}`}
                       >
                         {order.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="link"
-                          size="sm"
-                          icon={<FiEye />}
-                          onClick={() => handleViewDetails(order._id)}
-                        >
-                          View Details
-                        </Button>
-
-                        {user?.role === "MCP" && (
-                          <>
-                            {!isSharing || sharingOrderIdRef.current !== order._id ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                icon={<FiPlay />}
-                                onClick={() => startSharingLocation(order._id)}
-                              >
-                                Share Location
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                icon={<FiPause />}
-                                onClick={stopSharingLocation}
-                              >
-                                Stop Sharing
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleViewDetails(order._id)}
+                        className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                      >
+                        <FiEye className="h-4 w-4" />
+                        View Details
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -425,149 +347,139 @@ const Orders = () => {
         )}
       </div>
 
-      {/* Order Detail Modal */}
+      {/* MapView Modal */}
+      {showMapView && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold">Track Order</h3>
+              <button
+                onClick={closeMapView}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FiX className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-4">
+              <MapView />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal */}
       {showDetailModal && selectedOrder && (
-        <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              onClick={closeDetailModal}
-            />
-            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-              <div className="absolute right-0 top-0 pr-4 pt-4">
-                <button
-                  type="button"
-                  className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                  onClick={closeDetailModal}
-                >
-                  <span className="sr-only">Close</span>
-                  <FiX className="h-6 w-6" />
-                </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="text-lg font-semibold">Order Details</h3>
+              <button
+                onClick={closeDetailModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FiX className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Order Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Order ID</label>
+                  <p className="text-sm text-gray-900">#{selectedOrder._id.slice(-8)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Date</label>
+                  <p className="text-sm text-gray-900">{formatDateTime(selectedOrder.createdAt)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Amount</label>
+                  <p className="text-sm text-gray-900">{formatAmount(selectedOrder.totalAmount)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                      selectedOrder.status
+                    )}`}
+                  >
+                    {selectedOrder.status}
+                  </span>
+                </div>
               </div>
 
-              <div>
-                <div className="mt-3 sm:mt-0">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
-                    <FiPackage className="mr-2" /> Order Details
-                  </h3>
+              {/* Status Update Section */}
+              {user?.role === "MCP" && (
+                <div className="border-t pt-6">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Update Order Status</h4>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={newStatus}
+                      onChange={(e) => setNewStatus(e.target.value)}
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="PROCESSING">Processing</option>
+                      <option value="SHIPPED">Shipped</option>
+                      <option value="DELIVERED">Delivered</option>
+                      <option value="CANCELLED">Cancelled</option>
+                    </select>
+                    <Button
+                      onClick={handleUpdateStatus}
+                      disabled={isUpdatingStatus || newStatus === selectedOrder.status}
+                      variant="primary"
+                    >
+                      {isUpdatingStatus ? "Updating..." : "Update Status"}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-                  <div className="mt-4 border-t border-gray-200 pt-4">
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-500">Order ID:</span>
-                      <span className="text-sm text-gray-900">#{selectedOrder._id}</span>
-                    </div>
-
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-500">Order Date:</span>
-                      <span className="text-sm text-gray-900 flex items-center">
-                        <FiCalendar className="mr-1 h-4 w-4" />
-                        {formatDateTime(selectedOrder.createdAt)}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-500">Status:</span>
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                          selectedOrder.status
-                        )}`}
+              {/* Location Sharing for MCP */}
+              {user?.role === "MCP" && (
+                <div className="border-t pt-6">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Location Sharing</h4>
+                  <div className="flex items-center gap-3">
+                    {isSharing && sharingOrderIdRef.current === selectedOrder._id ? (
+                      <Button
+                        onClick={stopSharingLocation}
+                        variant="secondary"
+                        icon={<FiPause />}
                       >
-                        {selectedOrder.status}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-500">Total Amount:</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {formatAmount(selectedOrder.totalAmount)}
-                      </span>
-                    </div>
+                        Stop Sharing Location
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => startSharingLocation(selectedOrder._id)}
+                        variant="primary"
+                        icon={<FiPlay />}
+                      >
+                        Start Sharing Location
+                      </Button>
+                    )}
                   </div>
+                </div>
+              )}
 
-                  {/* Items */}
-                  <div className="mt-4 border-t border-gray-200 pt-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-4 flex items-center">
-                      <FiShoppingBag className="mr-2" /> Order Items
-                    </h4>
-
-                    <div className="space-y-3">
-                      {selectedOrder.items?.map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex justify-between py-2 border-b border-gray-100"
-                        >
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">
-                              {item.name || `Item #${index + 1}`}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Quantity: {item.quantity}
-                            </p>
-                          </div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {formatAmount(item.price || 0)}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Live Tracking */}
-                  <div className="mt-6 border-t border-gray-200 pt-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">
-                      Live Order Tracking
-                    </h4>
-                    <OrderTrackingMap location={orderLocation} />
-                    {orderLocation?.updatedAt && (
-                      <p className="text-xs text-gray-500 mt-2">
+              {/* Live Location Display */}
+              {orderLocation && (
+                <div className="border-t pt-6">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Current Location</h4>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">
+                      Latitude: {orderLocation.latitude}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Longitude: {orderLocation.longitude}
+                    </p>
+                    {orderLocation.updatedAt && (
+                      <p className="text-xs text-gray-500 mt-1">
                         Last updated: {formatDateTime(orderLocation.updatedAt)}
                       </p>
                     )}
                   </div>
-
-                  {/* Update Status (MCP only) */}
-                  {user && user.role === "MCP" && (
-                    <div className="mt-6 border-t border-gray-200 pt-4">
-                      <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
-                        <FiClock className="mr-2" /> Update Order Status
-                      </h4>
-
-                      <div className="flex space-x-2">
-                        <select
-                          className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-green-600 sm:text-sm sm:leading-6"
-                          value={newStatus}
-                          onChange={(e) => setNewStatus(e.target.value)}
-                          disabled={isUpdatingStatus}
-                        >
-                          <option value="PENDING">Pending</option>
-                          <option value="PROCESSING">Processing</option>
-                          <option value="SHIPPED">Shipped</option>
-                          <option value="DELIVERED">Delivered</option>
-                          <option value="CANCELLED">Cancelled</option>
-                        </select>
-
-                        <Button
-                          onClick={handleUpdateStatus}
-                          variant="primary"
-                          size="sm"
-                          disabled={
-                            isUpdatingStatus || newStatus === selectedOrder.status
-                          }
-                          loading={isUpdatingStatus}
-                        >
-                          Update
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-6">
-                    <Button variant="outline" fullWidth onClick={closeDetailModal}>
-                      Close
-                    </Button>
-                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
