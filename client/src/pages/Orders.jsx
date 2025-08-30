@@ -11,6 +11,7 @@ import {
   FiUserPlus,
   FiPlay,
   FiPause,
+  FiMapPin,
 } from "react-icons/fi";
 import L from "leaflet";
 import { orderService } from "../services/api";
@@ -43,6 +44,7 @@ const Orders = () => {
 
   // MapView modal state
   const [showMapView, setShowMapView] = useState(false);
+  const [selectedTrackingOrder, setSelectedTrackingOrder] = useState(null);
 
   // live tracking state (sharing for MCP)
   const [isSharing, setIsSharing] = useState(false);
@@ -115,13 +117,14 @@ const Orders = () => {
       ? orders
       : orders.filter((o) => o.status === statusFilter);
 
-  // Show MapView modal
+  // Show MapView modal with order selection
   const handleTrackOrder = () => {
     setShowMapView(true);
   };
 
   const closeMapView = () => {
     setShowMapView(false);
+    setSelectedTrackingOrder(null);
   };
 
   // View details + start polling location
@@ -257,7 +260,7 @@ const Orders = () => {
             <h2 className="text-xl font-semibold">Your Orders</h2>
 
             <div className="relative flex items-center gap-3">
-              {/* Track Order Button - Opens MapView */}
+              {/* Track Order Button - Opens MapView with order selection */}
               <Button
                 onClick={handleTrackOrder}
                 variant="primary"
@@ -265,7 +268,6 @@ const Orders = () => {
               >
                 Track Order
               </Button>
-
               <div className="relative">
                 <select
                   value={statusFilter}
@@ -287,7 +289,7 @@ const Orders = () => {
           </div>
         </div>
 
-        {/* Orders Table/List would go here */}
+        {/* Orders Table/List */}
         {filteredOrders.length === 0 ? (
           <EmptyState
             icon={<FiPackage />}
@@ -319,7 +321,7 @@ const Orders = () => {
                       {formatDate(order.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatAmount(order.totalAmount)}
+                      {formatAmount(order.totalAmount || order.amount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -352,7 +354,9 @@ const Orders = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-semibold">Track Order</h3>
+              <h3 className="text-lg font-semibold">
+                {selectedTrackingOrder ? `Track Order #${selectedTrackingOrder._id.slice(-8)}` : 'Select Order to Track'}
+              </h3>
               <button
                 onClick={closeMapView}
                 className="text-gray-400 hover:text-gray-600"
@@ -360,9 +364,65 @@ const Orders = () => {
                 <FiX className="h-6 w-6" />
               </button>
             </div>
-            <div className="p-4">
-              <MapView />
-            </div>
+            
+            {!selectedTrackingOrder ? (
+              // Order Selection View
+              <div className="p-6">
+                <h4 className="text-lg font-medium mb-4">Select an order to track:</h4>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {filteredOrders.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">No orders available</p>
+                  ) : (
+                    filteredOrders.map((order) => (
+                      <div
+                        key={order._id}
+                        className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => setSelectedTrackingOrder(order)}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-4">
+                              <span className="font-medium">#{order._id.slice(-8)}</span>
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                                {order.status}
+                              </span>
+                              <span className="text-sm text-gray-500">{formatDate(order.createdAt)}</span>
+                              <span className="text-sm font-medium">{formatAmount(order.totalAmount || order.amount)}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center text-blue-600">
+                            <FiMapPin className="h-4 w-4 mr-1" />
+                            <span className="text-sm">Track</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : (
+              // Map View
+              <div className="p-4">
+                <div className="mb-4 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedTrackingOrder.status)}`}>
+                      {selectedTrackingOrder.status}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      Amount: {formatAmount(selectedTrackingOrder.totalAmount || selectedTrackingOrder.amount)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedTrackingOrder(null)}
+                    className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                  >
+                    <FiPackage className="h-4 w-4" />
+                    Change Order
+                  </button>
+                </div>
+                <MapView selectedOrder={selectedTrackingOrder} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -373,12 +433,25 @@ const Orders = () => {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b">
               <h3 className="text-lg font-semibold">Order Details</h3>
-              <button
-                onClick={closeDetailModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <FiX className="h-6 w-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Track button in details modal for trackable orders */}
+                {canTrackOrder(selectedOrder.status) && (
+                  <button
+                    onClick={() => handleTrackSpecificOrder(selectedOrder)}
+                    className="text-green-600 hover:text-green-900 flex items-center gap-1 mr-2"
+                    title="Track this order on map"
+                  >
+                    <FiMapPin className="h-4 w-4" />
+                    Track on Map
+                  </button>
+                )}
+                <button
+                  onClick={closeDetailModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <FiX className="h-6 w-6" />
+                </button>
+              </div>
             </div>
 
             <div className="p-6 space-y-6">
@@ -394,7 +467,7 @@ const Orders = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Amount</label>
-                  <p className="text-sm text-gray-900">{formatAmount(selectedOrder.totalAmount)}</p>
+                  <p className="text-sm text-gray-900">{formatAmount(selectedOrder.totalAmount || selectedOrder.amount)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Status</label>
