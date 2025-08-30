@@ -13,7 +13,7 @@ router.use((req, res, next) => {
   next();
 });
 
-// All profile routes require JWT
+
 router.use(verifyToken);
 
 // Get profile
@@ -21,5 +21,7 @@ router.get("/", profileController.getProfile);
 
 // Save / update profile with image
 router.post("/", upload.single("image"), profileController.saveProfile);
+
+router.put("/", profileController.updateProfile);
 
 module.exports = router;

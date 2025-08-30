@@ -63,6 +63,34 @@ exports.saveProfile = async (req, res) => {
   }
 };
 
+// Update profile without image upload
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    
+    let profile = await Profile.findOne({ user: req.user.id });
+    
+    if (profile) {
+      profile.name = name || profile.name;
+      profile.phone = phone || profile.phone;
+      // Keep existing image
+      await profile.save();
+      return res.status(200).json({ success: true, profile });
+    } else {
+      profile = await Profile.create({
+        user: req.user.id,
+        name,
+        phone,
+        image: "",
+      });
+      return res.status(201).json({ success: true, profile });
+    }
+  } catch (err) {
+    console.error("Error updating profile:", err);
+    res.status(500).json({ success: false, message: "Error updating profile", error: err.message });
+  }
+};
+
 // Get profile
 exports.getProfile = async (req, res) => {
   try {
