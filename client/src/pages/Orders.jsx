@@ -112,14 +112,44 @@ const Orders = () => {
     return statusColors[status] || "bg-gray-100 text-gray-800";
   };
 
+  // Helper function to determine if an order can be tracked
+  const canTrackOrder = (status) => {
+    return ['SHIPPED', 'PROCESSING'].includes(status);
+  };
+
   const filteredOrders =
     statusFilter === "ALL"
       ? orders
       : orders.filter((o) => o.status === statusFilter);
 
-  // Show MapView modal with order selection
+  // Fixed Track Order - Auto-select and show map directly
   const handleTrackOrder = () => {
+    const trackableOrders = filteredOrders.filter(order => canTrackOrder(order.status));
+    
+    if (trackableOrders.length === 0) {
+      toast.error("No trackable orders found. Only shipped or processing orders can be tracked.");
+      return;
+    }
+    
+    // Auto-select the most recent trackable order
+    const mostRecentTrackable = trackableOrders.sort((a, b) => 
+      new Date(b.createdAt) - new Date(a.createdAt)
+    )[0];
+    
+    setSelectedTrackingOrder(mostRecentTrackable);
     setShowMapView(true);
+  };
+
+  // Handle tracking a specific order from details modal
+  const handleTrackSpecificOrder = (order) => {
+    if (!canTrackOrder(order.status)) {
+      toast.error("This order cannot be tracked. Only shipped or processing orders can be tracked.");
+      return;
+    }
+    
+    setSelectedTrackingOrder(order);
+    setShowDetailModal(false); // Close details modal
+    setShowMapView(true); // Open map view
   };
 
   const closeMapView = () => {
@@ -260,11 +290,11 @@ const Orders = () => {
             <h2 className="text-xl font-semibold">Your Orders</h2>
 
             <div className="relative flex items-center gap-3">
-              {/* Track Order Button - Opens MapView with order selection */}
+              {/* Track Order Button - Now directly shows map */}
               <Button
                 onClick={handleTrackOrder}
                 variant="primary"
-                icon={<FiUserPlus />}
+                icon={<FiMapPin />}
               >
                 Track Order
               </Button>
@@ -349,13 +379,13 @@ const Orders = () => {
         )}
       </div>
 
-      {/* MapView Modal */}
-      {showMapView && (
+      {/* MapView Modal - Now shows map directly */}
+      {showMapView && selectedTrackingOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="text-lg font-semibold">
-                {selectedTrackingOrder ? `Track Order #${selectedTrackingOrder._id.slice(-8)}` : 'Select Order to Track'}
+                Track Order #{selectedTrackingOrder._id.slice(-8)}
               </h3>
               <button
                 onClick={closeMapView}
@@ -365,15 +395,58 @@ const Orders = () => {
               </button>
             </div>
             
-            {!selectedTrackingOrder ? (
-              // Order Selection View
-              <div className="p-6">
-                <h4 className="text-lg font-medium mb-4">Select an order to track:</h4>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {filteredOrders.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No orders available</p>
-                  ) : (
-                    filteredOrders.map((order) => (
+            {/* Map View - Directly shown */}
+            <div className="p-4">
+              <div className="mb-4 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedTrackingOrder.status)}`}>
+                    {selectedTrackingOrder.status}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    Amount: {formatAmount(selectedTrackingOrder.totalAmount || selectedTrackingOrder.amount)}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    // Show order selection if they want to change
+                    setSelectedTrackingOrder(null);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                >
+                  <FiPackage className="h-4 w-4" />
+                  Change Order
+                </button>
+              </div>
+              <MapView selectedOrder={selectedTrackingOrder} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Selection Modal (shown when selectedTrackingOrder is null but showMapView is true) */}
+      {showMapView && !selectedTrackingOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold">Select Order to Track</h3>
+              <button
+                onClick={closeMapView}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FiX className="h-6 w-6" />
+              </button>
+            </div>
+            
+            {/* Order Selection View */}
+            <div className="p-6">
+              <h4 className="text-lg font-medium mb-4">Select an order to track:</h4>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {filteredOrders.filter(order => canTrackOrder(order.status)).length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No trackable orders available. Only shipped or processing orders can be tracked.</p>
+                ) : (
+                  filteredOrders
+                    .filter(order => canTrackOrder(order.status))
+                    .map((order) => (
                       <div
                         key={order._id}
                         className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
@@ -397,32 +470,9 @@ const Orders = () => {
                         </div>
                       </div>
                     ))
-                  )}
-                </div>
+                )}
               </div>
-            ) : (
-              // Map View
-              <div className="p-4">
-                <div className="mb-4 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedTrackingOrder.status)}`}>
-                      {selectedTrackingOrder.status}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      Amount: {formatAmount(selectedTrackingOrder.totalAmount || selectedTrackingOrder.amount)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setSelectedTrackingOrder(null)}
-                    className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-                  >
-                    <FiPackage className="h-4 w-4" />
-                    Change Order
-                  </button>
-                </div>
-                <MapView selectedOrder={selectedTrackingOrder} />
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}
