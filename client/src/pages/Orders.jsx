@@ -379,7 +379,7 @@ const Orders = () => {
         )}
       </div>
 
-      {/* MapView Modal - Now shows map directly */}
+      {/* MapView Modal - Always shows map directly */}
       {showMapView && selectedTrackingOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -395,7 +395,7 @@ const Orders = () => {
               </button>
             </div>
             
-            {/* Map View - Directly shown */}
+            {/* Map View - Always shown */}
             <div className="p-4">
               <div className="mb-4 flex justify-between items-center">
                 <div className="flex items-center gap-2">
@@ -406,72 +406,13 @@ const Orders = () => {
                     Amount: {formatAmount(selectedTrackingOrder.totalAmount || selectedTrackingOrder.amount)}
                   </span>
                 </div>
-                <button
-                  onClick={() => {
-                    // Show order selection if they want to change
-                    setSelectedTrackingOrder(null);
-                  }}
-                  className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-                >
-                  <FiPackage className="h-4 w-4" />
-                  Change Order
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    Order Date: {formatDate(selectedTrackingOrder.createdAt)}
+                  </span>
+                </div>
               </div>
               <MapView selectedOrder={selectedTrackingOrder} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Order Selection Modal (shown when selectedTrackingOrder is null but showMapView is true) */}
-      {showMapView && !selectedTrackingOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-semibold">Select Order to Track</h3>
-              <button
-                onClick={closeMapView}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <FiX className="h-6 w-6" />
-              </button>
-            </div>
-            
-            {/* Order Selection View */}
-            <div className="p-6">
-              <h4 className="text-lg font-medium mb-4">Select an order to track:</h4>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {filteredOrders.filter(order => canTrackOrder(order.status)).length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No trackable orders available. Only shipped or processing orders can be tracked.</p>
-                ) : (
-                  filteredOrders
-                    .filter(order => canTrackOrder(order.status))
-                    .map((order) => (
-                      <div
-                        key={order._id}
-                        className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => setSelectedTrackingOrder(order)}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4">
-                              <span className="font-medium">#{order._id.slice(-8)}</span>
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                                {order.status}
-                              </span>
-                              <span className="text-sm text-gray-500">{formatDate(order.createdAt)}</span>
-                              <span className="text-sm font-medium">{formatAmount(order.totalAmount || order.amount)}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center text-blue-600">
-                            <FiMapPin className="h-4 w-4 mr-1" />
-                            <span className="text-sm">Track</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                )}
-              </div>
             </div>
           </div>
         </div>
