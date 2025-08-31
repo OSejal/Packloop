@@ -123,8 +123,7 @@ const Orders = () => {
     toast.error("No orders available for the selected status");
     return;
   }
-  // Auto-pick the first order in the filtered list
-  setSelectedTrackingOrder(filteredOrders[0]);
+  setSelectedTrackingOrder(null); // no auto-pick
   setShowMapView(true);
 };
 
@@ -356,70 +355,70 @@ const Orders = () => {
       </div>
 
       {/* MapView Modal */}
-      {showMapView && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-semibold">
-                Track Orders ({statusFilter === "ALL" ? "All" : statusFilter})
-              </h3>
-              <button
-                onClick={closeMapView}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <FiX className="h-6 w-6" />
-              </button>
-            </div>
+        {showMapView && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              <div className="flex justify-between items-center p-4 border-b">
+                <h3 className="text-lg font-semibold">
+                  {selectedTrackingOrder
+                    ? `Track Order #${selectedTrackingOrder._id.slice(-8)}`
+                    : `Track Orders (${statusFilter === "ALL" ? "All" : statusFilter})`}
+                </h3>
+                <button
+                  onClick={closeMapView}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <FiX className="h-6 w-6" />
+                </button>
+              </div>
 
-            {/* Map Section */}
-            {selectedTrackingOrder ? (
               <div className="p-4">
+                {/* Info / Controls */}
                 <div className="mb-4 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                        selectedTrackingOrder.status
-                      )}`}
-                    >
-                      {selectedTrackingOrder.status}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      Amount:{" "}
-                      {formatAmount(
-                        selectedTrackingOrder.totalAmount ||
-                          selectedTrackingOrder.amount
-                      )}
-                    </span>
-                  </div>
-                  {/* Switch Orders (only filtered ones) */}
-                  <select
-                    value={selectedTrackingOrder._id}
-                    onChange={(e) => {
-                      const newOrder = filteredOrders.find(
-                        (o) => o._id === e.target.value
-                      );
-                      setSelectedTrackingOrder(newOrder || null);
-                    }}
-                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {filteredOrders.map((order) => (
-                      <option key={order._id} value={order._id}>
-                        #{order._id.slice(-8)} | {formatDate(order.createdAt)} |{" "}
-                        {formatAmount(order.totalAmount || order.amount)}
-                      </option>
-                    ))}
-                  </select>
+                  {selectedTrackingOrder ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                            selectedTrackingOrder.status
+                          )}`}
+                        >
+                          {selectedTrackingOrder.status}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          Amount:{" "}
+                          {formatAmount(
+                            selectedTrackingOrder.totalAmount ||
+                              selectedTrackingOrder.amount
+                          )}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setSelectedTrackingOrder(null)}
+                        className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                      >
+                        <FiPackage className="h-4 w-4" />
+                        Change Order
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      No order selected — showing all orders on map
+                    </p>
+                  )}
                 </div>
-                <MapView selectedOrder={selectedTrackingOrder} />
+
+                {/* Always show MapView */}
+                <MapView
+                  orders={filteredOrders}   // ✅ pass all filtered orders
+                  selectedOrder={selectedTrackingOrder} // ✅ highlight selected one if chosen
+                />
               </div>
-            ) : (
-              <div className="p-6 text-center text-gray-500">
-                No orders available to track
-              </div>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+
 
       {/* Order Details Modal */}
       {showDetailModal && selectedOrder && (
