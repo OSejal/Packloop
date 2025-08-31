@@ -122,19 +122,23 @@ const Orders = () => {
       ? orders
       : orders.filter((o) => o.status === statusFilter);
 
-  // Fixed Track Order - Always show map with any order
+  // Track Order - Always show map, no restrictions
   const handleTrackOrder = () => {
-    if (filteredOrders.length === 0) {
-      toast.error("No orders available to track.");
-      return;
-    }
-    
-    // Auto-select the most recent order (any status)
-    const mostRecentOrder = filteredOrders.sort((a, b) => 
-      new Date(b.createdAt) - new Date(a.createdAt)
-    )[0];
-    
-    setSelectedTrackingOrder(mostRecentOrder);
+    // Create a default order object for Ranchi
+    const defaultOrder = {
+      _id: "default-ranchi-order",
+      status: "TRACKING",
+      totalAmount: 0,
+      amount: 0,
+      createdAt: new Date().toISOString(),
+      location: {
+        latitude: 23.3441,
+        longitude: 85.3096
+      }
+    };
+
+    // Always use the default Ranchi order for now
+    setSelectedTrackingOrder(defaultOrder);
     setShowMapView(true);
   };
 
