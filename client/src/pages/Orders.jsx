@@ -122,21 +122,19 @@ const Orders = () => {
       ? orders
       : orders.filter((o) => o.status === statusFilter);
 
-  // Fixed Track Order - Auto-select and show map directly
+  // Fixed Track Order - Always show map with any order
   const handleTrackOrder = () => {
-    const trackableOrders = filteredOrders.filter(order => canTrackOrder(order.status));
-    
-    if (trackableOrders.length === 0) {
-      toast.error("No trackable orders found. Only shipped or processing orders can be tracked.");
+    if (filteredOrders.length === 0) {
+      toast.error("No orders available to track.");
       return;
     }
     
-    // Auto-select the most recent trackable order
-    const mostRecentTrackable = trackableOrders.sort((a, b) => 
+    // Auto-select the most recent order (any status)
+    const mostRecentOrder = filteredOrders.sort((a, b) => 
       new Date(b.createdAt) - new Date(a.createdAt)
     )[0];
     
-    setSelectedTrackingOrder(mostRecentTrackable);
+    setSelectedTrackingOrder(mostRecentOrder);
     setShowMapView(true);
   };
 
