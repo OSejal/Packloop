@@ -1,26 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiPackage,
-  FiFilter,
   FiChevronDown,
   FiEye,
-  FiCalendar,
-  FiClock,
-  FiShoppingBag,
   FiX,
-  FiUserPlus,
   FiPlay,
   FiPause,
   FiMapPin,
 } from "react-icons/fi";
-import L from "leaflet";
 import { orderService } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
 import Button from "../components/Button";
 import { toast } from "react-hot-toast";
-import MapView from "../components/MapView";
 
 const Orders = () => {
   const { user } = useAuth();
@@ -42,9 +35,8 @@ const Orders = () => {
   const [newStatus, setNewStatus] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // MapView modal state
+  // Map view state (not modal)
   const [showMapView, setShowMapView] = useState(false);
-  const [selectedTrackingOrder, setSelectedTrackingOrder] = useState(null);
 
   // live tracking state (sharing for MCP)
   const [isSharing, setIsSharing] = useState(false);
@@ -122,36 +114,15 @@ const Orders = () => {
       ? orders
       : orders.filter((o) => o.status === statusFilter);
 
-  // Track Order - Always show map, no restrictions
+  // Track Order - Toggle map view
   const handleTrackOrder = () => {
-    // Create a default order object for Ranchi
-    const defaultOrder = {
-      _id: "default-ranchi-order",
-      status: "TRACKING",
-      totalAmount: 0,
-      amount: 0,
-      createdAt: new Date().toISOString(),
-      location: {
-        latitude: 23.3441,
-        longitude: 85.3096
-      }
-    };
-
-    // Always use the default Ranchi order for now
-    setSelectedTrackingOrder(defaultOrder);
-    setShowMapView(true);
+    setShowMapView(!showMapView);
   };
 
-  // Handle tracking a specific order from details modal
+  // Handle tracking a specific order
   const handleTrackSpecificOrder = (order) => {
-    if (!canTrackOrder(order.status)) {
-      toast.error("This order cannot be tracked. Only shipped or processing orders can be tracked.");
-      return;
-    }
-    
-    setSelectedTrackingOrder(order);
-    setShowDetailModal(false); // Close details modal
-    setShowMapView(true); // Open map view
+    setShowMapView(true);
+    setShowDetailModal(false);
   };
 
   const closeMapView = () => {
@@ -178,7 +149,6 @@ const Orders = () => {
     const fetchOnce = async () => {
       try {
         const res = await orderService.getOrderLocation(orderId);
-        // Expecting { data: { location: { latitude, longitude, updatedAt? } } }
         const loc = res?.data?.location || res?.data?.data?.location;
         setOrderLocation(loc ?? null);
       } catch (err) {
@@ -202,7 +172,6 @@ const Orders = () => {
       return;
     }
     if (watchRef.current) {
-      // already sharing for another order, stop first
       stopSharingLocation();
     }
 
@@ -257,7 +226,6 @@ const Orders = () => {
       setIsUpdatingStatus(true);
       await orderService.updateOrderStatus(selectedOrderId, newStatus);
 
-      // Update local state
       setOrders((prev) =>
         prev.map((o) =>
           o._id === selectedOrderId ? { ...o, status: newStatus } : o
@@ -275,7 +243,7 @@ const Orders = () => {
     }
   };
 
-  // Render
+  // Render loading state
   if (isLoading) {
     return (
       <div className="h-64 flex items-center justify-center">
@@ -292,13 +260,12 @@ const Orders = () => {
             <h2 className="text-xl font-semibold">Your Orders</h2>
 
             <div className="relative flex items-center gap-3">
-              {/* Track Order Button - Now directly shows map */}
               <Button
                 onClick={handleTrackOrder}
                 variant="primary"
                 icon={<FiMapPin />}
               >
-                Track Order
+                {showMapView ? 'Hide Map' : 'Track Order'}
               </Button>
               <div className="relative">
                 <select
@@ -321,8 +288,34 @@ const Orders = () => {
           </div>
         </div>
 
-        {/* Orders Table/List */}
-        {filteredOrders.length === 0 ? (
+        {/* Show Map or Orders List */}
+        {showMapView ? (
+          // Map View - Replaces the orders list/empty state
+          <div className="p-6">
+            <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+              <div className="text-center">
+                <FiMapPin className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Order Tracking - Ranchi
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Live tracking map for your orders
+                </p>
+                <div className="bg-white p-4 rounded-lg shadow-sm max-w-sm mx-auto">
+                  <p className="text-sm text-gray-600 mb-2">
+                    <strong>Location:</strong> Ranchi, Jharkhand
+                  </p>
+                  <p className="text-sm text-gray-600 mb-2">
+                    <strong>Coordinates:</strong> 23.3441°N, 85.3096°E
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Map integration will be added here
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : filteredOrders.length === 0 ? (
           <EmptyState
             icon={<FiPackage />}
             title="No Orders Found"
@@ -381,45 +374,6 @@ const Orders = () => {
         )}
       </div>
 
-      {/* MapView Modal - Always shows map directly */}
-      {showMapView && selectedTrackingOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-semibold">
-                Track Order #{selectedTrackingOrder._id.slice(-8)}
-              </h3>
-              <button
-                onClick={closeMapView}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <FiX className="h-6 w-6" />
-              </button>
-            </div>
-            
-            {/* Map View - Always shown */}
-            <div className="p-4">
-              <div className="mb-4 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedTrackingOrder.status)}`}>
-                    {selectedTrackingOrder.status}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    Amount: {formatAmount(selectedTrackingOrder.totalAmount || selectedTrackingOrder.amount)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">
-                    Order Date: {formatDate(selectedTrackingOrder.createdAt)}
-                  </span>
-                </div>
-              </div>
-              <MapView selectedOrder={selectedTrackingOrder} />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Order Details Modal */}
       {showDetailModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -427,17 +381,14 @@ const Orders = () => {
             <div className="flex justify-between items-center p-6 border-b">
               <h3 className="text-lg font-semibold">Order Details</h3>
               <div className="flex items-center gap-2">
-                {/* Track button in details modal for trackable orders */}
-                {canTrackOrder(selectedOrder.status) && (
-                  <button
-                    onClick={() => handleTrackSpecificOrder(selectedOrder)}
-                    className="text-green-600 hover:text-green-900 flex items-center gap-1 mr-2"
-                    title="Track this order on map"
-                  >
-                    <FiMapPin className="h-4 w-4" />
-                    Track on Map
-                  </button>
-                )}
+                <button
+                  onClick={() => handleTrackSpecificOrder(selectedOrder)}
+                  className="text-green-600 hover:text-green-900 flex items-center gap-1 mr-2"
+                  title="Track this order on map"
+                >
+                  <FiMapPin className="h-4 w-4" />
+                  Track on Map
+                </button>
                 <button
                   onClick={closeDetailModal}
                   className="text-gray-400 hover:text-gray-600"
