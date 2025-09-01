@@ -2,11 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiPackage,
   FiChevronDown,
-  FiEye,
-  FiX,
+  FiMapPin,
   FiPlay,
   FiPause,
-  FiMapPin,
 } from "react-icons/fi";
 import { orderService } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +12,9 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
 import Button from "../components/Button";
 import { toast } from "react-hot-toast";
+
+// Import MapComponent
+import MapComponent from "../components/MapComponent";
 
 const Orders = () => {
   const { user } = useAuth();
@@ -23,11 +24,6 @@ const Orders = () => {
   const [orderLocation, setOrderLocation] = useState(null);
   const pollRef = useRef(null);
 
-  // details modal
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-
   // list filter
   const [statusFilter, setStatusFilter] = useState("ALL");
 
@@ -35,8 +31,9 @@ const Orders = () => {
   const [newStatus, setNewStatus] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // Map view state (not modal)
+  // Map view state
   const [showMapView, setShowMapView] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   // live tracking state (sharing for MCP)
   const [isSharing, setIsSharing] = useState(false);
@@ -77,15 +74,6 @@ const Orders = () => {
       day: "numeric",
     });
 
-  const formatDateTime = (dateString) =>
-    new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
   const formatAmount = (amount) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -104,50 +92,20 @@ const Orders = () => {
     return statusColors[status] || "bg-gray-100 text-gray-800";
   };
 
-  // Helper function to determine if an order can be tracked
-  const canTrackOrder = (status) => {
-    return ['SHIPPED', 'PROCESSING'].includes(status);
-  };
-
   const filteredOrders =
     statusFilter === "ALL"
       ? orders
       : orders.filter((o) => o.status === statusFilter);
 
   // Track Order - Toggle map view
-  const handleTrackOrder = () => {
-    setShowMapView(!showMapView);
-  };
-
-  // Handle tracking a specific order
-  const handleTrackSpecificOrder = (order) => {
-    setShowMapView(true);
-    setShowDetailModal(false);
-  };
-
-  // Remove all modal-related states and functions
-  const closeMapView = () => {
-    setShowMapView(false);
-  };
-
-  // Remove closeDetailModal reference to closeMapView
-
-  // View details + start polling location
-  const handleViewDetails = (orderId) => {
-    const order = orders.find((o) => o._id === orderId);
-    if (!order) return;
+  const handleTrackOrder = (order) => {
     setSelectedOrder(order);
-    setSelectedOrderId(orderId);
-    setShowDetailModal(true);
-    setNewStatus(order.status);
-
-    // start polling this order's location
-    startPollingLocation(orderId);
+    setShowMapView(true);
+    startPollingLocation(order._id);
   };
 
   const startPollingLocation = (orderId) => {
     clearInterval(pollRef.current);
-    // fetch immediately then every 5s
     const fetchOnce = async () => {
       try {
         const res = await orderService.getOrderLocation(orderId);
@@ -211,40 +169,6 @@ const Orders = () => {
     sharingOrderIdRef.current = null;
   };
 
-  // when closing modal, stop polling
-  const closeDetailModal = () => {
-    setShowDetailModal(false);
-    setSelectedOrderId(null);
-    setSelectedOrder(null);
-    stopPollingLocation();
-  };
-
-  // Update status
-  const handleUpdateStatus = async () => {
-    if (!selectedOrderId || !newStatus || newStatus === selectedOrder?.status)
-      return;
-
-    try {
-      setIsUpdatingStatus(true);
-      await orderService.updateOrderStatus(selectedOrderId, newStatus);
-
-      setOrders((prev) =>
-        prev.map((o) =>
-          o._id === selectedOrderId ? { ...o, status: newStatus } : o
-        )
-      );
-      setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : prev));
-      toast.success("Order status updated successfully");
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to update order status"
-      );
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
-
   // Render loading state
   if (isLoading) {
     return (
@@ -262,13 +186,6 @@ const Orders = () => {
             <h2 className="text-xl font-semibold">Your Orders</h2>
 
             <div className="relative flex items-center gap-3">
-              <Button
-                onClick={handleTrackOrder}
-                variant="primary"
-                icon={<FiMapPin />}
-              >
-                {showMapView ? 'Hide Map' : 'Track Order'}
-              </Button>
               <div className="relative">
                 <select
                   value={statusFilter}
@@ -291,31 +208,33 @@ const Orders = () => {
         </div>
 
         {/* Show Map or Orders List */}
-        {showMapView ? (
-          // Map View - Replaces the orders list/empty state
+        {showMapView && selectedOrder ? (
           <div className="p-6">
-            <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-              <div className="text-center">
-                <FiMapPin className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Order Tracking - Ranchi
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Live tracking map for your orders
-                </p>
-                <div className="bg-white p-4 rounded-lg shadow-sm max-w-sm mx-auto">
-                  <p className="text-sm text-gray-600 mb-2">
-                    <strong>Location:</strong> Ranchi, Jharkhand
-                  </p>
-                  <p className="text-sm text-gray-600 mb-2">
-                    <strong>Coordinates:</strong> 23.3441°N, 85.3096°E
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Map integration will be added here
-                  </p>
-                </div>
-              </div>
+            <div className="h-96">
+              <MapComponent selectedOrder={selectedOrder} orderLocation={orderLocation} />
             </div>
+            {/* MCP Controls */}
+            {user?.role === "MCP" && (
+              <div className="mt-4 flex gap-4">
+                {isSharing && sharingOrderIdRef.current === selectedOrder._id ? (
+                  <Button
+                    onClick={stopSharingLocation}
+                    variant="secondary"
+                    icon={<FiPause />}
+                  >
+                    Stop Sharing Location
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => startSharingLocation(selectedOrder._id)}
+                    variant="primary"
+                    icon={<FiPlay />}
+                  >
+                    Start Sharing Location
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         ) : filteredOrders.length === 0 ? (
           <EmptyState
@@ -361,11 +280,11 @@ const Orders = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => handleViewDetails(order._id)}
-                        className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                        onClick={() => handleTrackOrder(order)}
+                        className="text-green-600 hover:text-green-900 flex items-center gap-1"
                       >
-                        <FiEye className="h-4 w-4" />
-                        View Details
+                        <FiMapPin className="h-4 w-4" />
+                        Track Order
                       </button>
                     </td>
                   </tr>
@@ -375,134 +294,6 @@ const Orders = () => {
           </div>
         )}
       </div>
-
-      {/* Only Order Details Modal - NO MAP MODAL */}
-      {showDetailModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-lg font-semibold">Order Details</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleTrackSpecificOrder(selectedOrder)}
-                  className="text-green-600 hover:text-green-900 flex items-center gap-1 mr-2"
-                  title="Show tracking map"
-                >
-                  <FiMapPin className="h-4 w-4" />
-                  Show Map
-                </button>
-                <button
-                  onClick={closeDetailModal}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <FiX className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Order Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Order ID</label>
-                  <p className="text-sm text-gray-900">#{selectedOrder._id.slice(-8)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Date</label>
-                  <p className="text-sm text-gray-900">{formatDateTime(selectedOrder.createdAt)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Amount</label>
-                  <p className="text-sm text-gray-900">{formatAmount(selectedOrder.totalAmount || selectedOrder.amount)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                      selectedOrder.status
-                    )}`}
-                  >
-                    {selectedOrder.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Status Update Section */}
-              {user?.role === "MCP" && (
-                <div className="border-t pt-6">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Update Order Status</h4>
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value)}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="PENDING">Pending</option>
-                      <option value="PROCESSING">Processing</option>
-                      <option value="SHIPPED">Shipped</option>
-                      <option value="DELIVERED">Delivered</option>
-                      <option value="CANCELLED">Cancelled</option>
-                    </select>
-                    <Button
-                      onClick={handleUpdateStatus}
-                      disabled={isUpdatingStatus || newStatus === selectedOrder.status}
-                      variant="primary"
-                    >
-                      {isUpdatingStatus ? "Updating..." : "Update Status"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Location Sharing for MCP */}
-              {user?.role === "MCP" && (
-                <div className="border-t pt-6">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Location Sharing</h4>
-                  <div className="flex items-center gap-3">
-                    {isSharing && sharingOrderIdRef.current === selectedOrder._id ? (
-                      <Button
-                        onClick={stopSharingLocation}
-                        variant="secondary"
-                        icon={<FiPause />}
-                      >
-                        Stop Sharing Location
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => startSharingLocation(selectedOrder._id)}
-                        variant="primary"
-                        icon={<FiPlay />}
-                      >
-                        Start Sharing Location
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Live Location Display */}
-              {orderLocation && (
-                <div className="border-t pt-6">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Current Location</h4>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-600">
-                      Latitude: {orderLocation.latitude}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Longitude: {orderLocation.longitude}
-                    </p>
-                    {orderLocation.updatedAt && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Last updated: {formatDateTime(orderLocation.updatedAt)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
