@@ -125,10 +125,12 @@ const Orders = () => {
     setShowDetailModal(false);
   };
 
+  // Remove all modal-related states and functions
   const closeMapView = () => {
     setShowMapView(false);
-    setSelectedTrackingOrder(null);
   };
+
+  // Remove closeDetailModal reference to closeMapView
 
   // View details + start polling location
   const handleViewDetails = (orderId) => {
@@ -374,7 +376,7 @@ const Orders = () => {
         )}
       </div>
 
-      {/* Order Details Modal */}
+      {/* Only Order Details Modal - NO MAP MODAL */}
       {showDetailModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -384,10 +386,10 @@ const Orders = () => {
                 <button
                   onClick={() => handleTrackSpecificOrder(selectedOrder)}
                   className="text-green-600 hover:text-green-900 flex items-center gap-1 mr-2"
-                  title="Track this order on map"
+                  title="Show tracking map"
                 >
                   <FiMapPin className="h-4 w-4" />
-                  Track on Map
+                  Show Map
                 </button>
                 <button
                   onClick={closeDetailModal}
