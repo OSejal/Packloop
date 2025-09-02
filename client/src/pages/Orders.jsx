@@ -237,7 +237,7 @@ const Orders = () => {
                 onClick={handleTrackOrder}
                 className="flex items-center gap-2 bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                <span><FiMapPin /></span>
+                <span>📍</span>
                 {showMapView ? "Hide Map" : "Track Orders"}
               </button>
               
@@ -314,7 +314,7 @@ const Orders = () => {
                           onClick={() => handleViewDetails(order._id)}
                           className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
                         >
-                          <span><FiEye /></span>
+                          <span>👁️</span>
                           Details
                         </button>
                         
