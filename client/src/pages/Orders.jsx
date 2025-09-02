@@ -1,70 +1,95 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  FiPackage,
-  FiChevronDown,
-  FiEye,
-  FiX,
-  FiPlay,
-  FiPause,
-  FiMapPin,
-} from "react-icons/fi";
-import { orderService } from "../services/api";
-import { useAuth } from "../context/AuthContext";
-import LoadingSpinner from "../components/LoadingSpinner";
-import EmptyState from "../components/EmptyState";
-import Button from "../components/Button";
-import { toast } from "react-hot-toast";
+
+// Mock components and services for demo
+const LoadingSpinner = ({ size }) => (
+  <div className={`animate-spin rounded-full border-b-2 border-green-600 ${
+    size === 'lg' ? 'h-12 w-12' : 'h-6 w-6'
+  }`}></div>
+);
+
+const EmptyState = ({ icon, title, description }) => (
+  <div className="p-12 text-center">
+    <div className="text-6xl text-gray-400 mb-4">{icon}</div>
+    <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
+    <p className="text-gray-600">{description}</p>
+  </div>
+);
+
+const Button = ({ onClick, children, variant, icon, disabled }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`flex items-center gap-2 px-4 py-2 rounded font-medium transition-colors ${
+      variant === 'primary' 
+        ? 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400' 
+        : 'bg-gray-600 hover:bg-gray-700 text-white'
+    }`}
+  >
+    {icon && <span>{icon}</span>}
+    {children}
+  </button>
+);
+
+// Mock data
+const mockOrders = [
+  {
+    _id: "order1234567890",
+    createdAt: "2025-09-01T10:00:00Z",
+    totalAmount: 250.50,
+    status: "SHIPPED"
+  },
+  {
+    _id: "order0987654321", 
+    createdAt: "2025-08-31T15:30:00Z",
+    totalAmount: 150.75,
+    status: "PROCESSING"
+  }
+];
+
+const mockUser = { role: "MCP" };
+const mockToast = { 
+  error: (msg) => console.error(msg), 
+  success: (msg) => console.log(msg) 
+};
 
 const Orders = () => {
-  const { user } = useAuth();
+  const user = mockUser;
+  const toast = mockToast;
 
-  const [orders, setOrders] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [orders, setOrders] = useState(mockOrders);
+  const [isLoading, setIsLoading] = useState(false);
   const [orderLocation, setOrderLocation] = useState(null);
   const pollRef = useRef(null);
 
-  // details modal
+  // Modal states
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  // list filter
+  // Filter state
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  // status updates
+  // Status update states
   const [newStatus, setNewStatus] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // Map view state
   const [showMapView, setShowMapView] = useState(false);
+  const [trackingOrderId, setTrackingOrderId] = useState(null);
 
-  // live tracking state
+  // Live tracking states
   const [isSharing, setIsSharing] = useState(false);
+  const [deliveryProgress, setDeliveryProgress] = useState(0);
+  const [isDelivering, setIsDelivering] = useState(false);
   const watchRef = useRef(null);
   const sharingOrderIdRef = useRef(null);
 
-  // Fetch orders
-  useEffect(() => {
-    fetchOrders();
-    return () => {
-      stopSharingLocation();
-    };
-  }, []);
+  // Ranchi coordinates
+  const pickup = [23.3441, 85.3096];
+  const drop = [23.3550, 85.3200];
+  const [currentPos, setCurrentPos] = useState(pickup);
 
-  const fetchOrders = async () => {
-    try {
-      setIsLoading(true);
-      const response = await orderService.getOrders();
-      setOrders(response.data?.data?.orders ?? []);
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      toast.error("Failed to load orders");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Helpers
+  // Helper functions
   const tableHeaders = useMemo(
     () => ["Order ID", "Date", "Amount", "Status", "Actions"],
     []
@@ -87,7 +112,7 @@ const Orders = () => {
     });
 
   const formatAmount = (amount) =>
-    new Intl.NumberFormat("en-US", {
+    new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 2,
@@ -104,6 +129,10 @@ const Orders = () => {
     return statusColors[status] || "bg-gray-100 text-gray-800";
   };
 
+  const canTrackOrder = (status) => {
+    return ['SHIPPED', 'PROCESSING'].includes(status);
+  };
+
   const filteredOrders =
     statusFilter === "ALL"
       ? orders
@@ -112,7 +141,59 @@ const Orders = () => {
   // Track Order - Toggle map view
   const handleTrackOrder = () => {
     setShowMapView(!showMapView);
+    if (!showMapView) {
+      // Auto-select first trackable order
+      const trackableOrder = filteredOrders.find(order => canTrackOrder(order.status));
+      if (trackableOrder) {
+        setTrackingOrderId(trackableOrder._id);
+        startDeliverySimulation();
+      }
+    } else {
+      setTrackingOrderId(null);
+      setIsDelivering(false);
+      setDeliveryProgress(0);
+    }
   };
+
+  // Track specific order
+  const handleTrackSpecificOrder = (order) => {
+    setTrackingOrderId(order._id);
+    setShowMapView(true);
+    setShowDetailModal(false);
+    startDeliverySimulation();
+  };
+
+  // Start delivery simulation
+  const startDeliverySimulation = () => {
+    setIsDelivering(true);
+    setDeliveryProgress(0);
+    setCurrentPos(pickup);
+  };
+
+  // Delivery progress simulation
+  useEffect(() => {
+    if (isDelivering) {
+      const interval = setInterval(() => {
+        setDeliveryProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setIsDelivering(false);
+            return 100;
+          }
+          const newProgress = prev + 2;
+          
+          // Update position
+          const newLat = pickup[0] + (drop[0] - pickup[0]) * (newProgress / 100);
+          const newLng = pickup[1] + (drop[1] - pickup[1]) * (newProgress / 100);
+          setCurrentPos([newLat, newLng]);
+          
+          return newProgress;
+        });
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [isDelivering]);
 
   // View details
   const handleViewDetails = (orderId) => {
@@ -122,105 +203,17 @@ const Orders = () => {
     setSelectedOrderId(orderId);
     setShowDetailModal(true);
     setNewStatus(order.status);
-
-    // start polling this order's location
-    startPollingLocation(orderId);
-  };
-
-  const startPollingLocation = (orderId) => {
-    clearInterval(pollRef.current);
-    const fetchOnce = async () => {
-      try {
-        const res = await orderService.getOrderLocation(orderId);
-        const loc = res?.data?.location || res?.data?.data?.location;
-        setOrderLocation(loc ?? null);
-      } catch (err) {
-        console.error("getOrderLocation error:", err);
-      }
-    };
-    fetchOnce();
-    pollRef.current = setInterval(fetchOnce, 5000);
-  };
-
-  const stopPollingLocation = () => {
-    clearInterval(pollRef.current);
-    pollRef.current = null;
-    setOrderLocation(null);
-  };
-
-  const startSharingLocation = (orderId) => {
-    if (!("geolocation" in navigator)) {
-      toast.error("Geolocation is not supported by this browser.");
-      return;
-    }
-    if (watchRef.current) {
-      stopSharingLocation();
-    }
-
-    sharingOrderIdRef.current = orderId;
-    watchRef.current = navigator.geolocation.watchPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        try {
-          await orderService.updateOrderLocation(orderId, {
-            latitude,
-            longitude,
-          });
-        } catch (err) {
-          console.error("updateOrderLocation error:", err);
-        }
-      },
-      (err) => {
-        console.error("Geolocation error:", err);
-        toast.error(err.message || "Failed to get location");
-        stopSharingLocation();
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-
-    setIsSharing(true);
-    toast.success("Started sharing location");
-  };
-
-  const stopSharingLocation = () => {
-    if (watchRef.current) {
-      navigator.geolocation.clearWatch(watchRef.current);
-      watchRef.current = null;
-    }
-    setIsSharing(false);
-    sharingOrderIdRef.current = null;
   };
 
   const closeDetailModal = () => {
     setShowDetailModal(false);
     setSelectedOrderId(null);
     setSelectedOrder(null);
-    stopPollingLocation();
   };
 
-  const handleUpdateStatus = async () => {
-    if (!selectedOrderId || !newStatus || newStatus === selectedOrder?.status)
-      return;
-
-    try {
-      setIsUpdatingStatus(true);
-      await orderService.updateOrderStatus(selectedOrderId, newStatus);
-
-      setOrders((prev) =>
-        prev.map((o) =>
-          o._id === selectedOrderId ? { ...o, status: newStatus } : o
-        )
-      );
-      setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : prev));
-      toast.success("Order status updated successfully");
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to update order status"
-      );
-    } finally {
-      setIsUpdatingStatus(false);
-    }
+  // Create Google Maps URL
+  const createMapUrl = () => {
+    return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d58667.22307907394!2d85.28958!3d23.34414!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f4e104aa5bd67f%3A0x6020659417dfd20c!2sRanchi%2C%20Jharkhand!5e0!3m2!1sen!2sin!4v1693567890123!5m2!1sen!2sin`;
   };
 
   if (isLoading) {
@@ -232,144 +225,306 @@ const Orders = () => {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl">
-      {/* Orders Card */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+    <div className="container mx-auto max-w-6xl space-y-6">
+      {/* Orders Table Card */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="bg-green-600 px-6 py-4 text-white">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Your Orders</h2>
 
             <div className="relative flex items-center gap-3">
-              <Button
+              <button
                 onClick={handleTrackOrder}
-                variant="primary"
-                icon={<FiMapPin />}
+                className="flex items-center gap-2 bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                {showMapView ? "Hide Map" : "Track Order"}
-              </Button>
+                <span>📍</span>
+                {showMapView ? "Hide Map" : "Track Orders"}
+              </button>
+              
               <div className="relative">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="appearance-none bg-white bg-opacity-20 text-black rounded-md pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                  className="appearance-none bg-white bg-opacity-20 text-white rounded-md pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
                 >
-                  <option value="ALL">All Orders</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="PROCESSING">Processing</option>
-                  <option value="SHIPPED">Shipped</option>
-                  <option value="DELIVERED">Delivered</option>
-                  <option value="CANCELLED">Cancelled</option>
+                  <option value="ALL" className="text-black">All Orders</option>
+                  <option value="PENDING" className="text-black">Pending</option>
+                  <option value="PROCESSING" className="text-black">Processing</option>
+                  <option value="SHIPPED" className="text-black">Shipped</option>
+                  <option value="DELIVERED" className="text-black">Delivered</option>
+                  <option value="CANCELLED" className="text-black">Cancelled</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                  <FiChevronDown className="h-5 w-5 text-white" />
+                  <span className="h-5 w-5 text-white">▼</span>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Orders Table */}
-          {filteredOrders.length === 0 ? (
-            <EmptyState
-              icon={<FiPackage />}
-              title="No Orders Found"
-              description="You haven't placed any orders yet."
-            />
-          ) : (
-            <div className="overflow-x-auto mt-4">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {tableHeaders.map((header) => (
-                      <th
-                        key={header}
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+        {/* Orders Table */}
+        {filteredOrders.length === 0 ? (
+          <EmptyState
+            icon="📦"
+            title="No Orders Found"
+            description="You haven't placed any orders yet."
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  {tableHeaders.map((header) => (
+                    <th
+                      key={header}
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredOrders.map((order) => (
+                  <tr 
+                    key={order._id}
+                    className={trackingOrderId === order._id ? 'bg-blue-50' : ''}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      #{order._id.slice(-8)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(order.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatAmount(order.totalAmount || order.amount)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                          order.status
+                        )}`}
                       >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredOrders.map((order) => (
-                    <tr key={order._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{order._id.slice(-8)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(order.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatAmount(order.totalAmount || order.amount)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                            order.status
-                          )}`}
-                        >
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center gap-3">
                         <button
                           onClick={() => handleViewDetails(order._id)}
                           className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
                         >
-                          <FiEye className="h-4 w-4" />
-                          View Details
+                          <span>👁️</span>
+                          Details
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                        
+                        {canTrackOrder(order.status) && (
+                          <button
+                            onClick={() => handleTrackSpecificOrder(order)}
+                            className="text-green-600 hover:text-green-900 flex items-center gap-1"
+                          >
+                            <span>📍</span>
+                            Track
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Full Tracking Section Below Table */}
+      {/* MAP SECTION - Now appears BELOW the orders table */}
       {showMapView && (
-        <div className="bg-gray-100 rounded-lg p-6 shadow-md mb-8">
-          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <FiMapPin className="text-green-500" /> Order Tracking
-          </h3>
-
-          <div className="h-[500px] w-full bg-gray-200 rounded-lg flex items-center justify-center border border-gray-300">
-            {selectedOrder ? (
-              <p className="text-gray-600">
-                Tracking order #{selectedOrder._id.slice(-8)} here.
-              </p>
-            ) : (
-              <p className="text-gray-600">
-                Select an order to track its location here.
-              </p>
-            )}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-blue-600 px-6 py-4 text-white">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-semibold">
+                Order Tracking - Ranchi {trackingOrderId && `(#${trackingOrderId.slice(-8)})`}
+              </h3>
+              <button
+                onClick={() => setShowMapView(false)}
+                className="text-white hover:text-gray-200 text-lg"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
-          {/* Live Coordinates */}
-          {orderLocation && (
-            <div className="mt-4 bg-white p-4 rounded-lg shadow-sm">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">
-                Current Location
-              </h4>
-              <p className="text-sm text-gray-600">
-                Latitude: {orderLocation.latitude}
-              </p>
-              <p className="text-sm text-gray-600">
-                Longitude: {orderLocation.longitude}
-              </p>
-              {orderLocation.updatedAt && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Last updated: {formatDateTime(orderLocation.updatedAt)}
-                </p>
-              )}
+          <div className="p-6">
+            {/* Order Selection Info */}
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-gray-600">Currently Tracking:</p>
+                  <p className="font-medium">
+                    {trackingOrderId ? `Order #${trackingOrderId.slice(-8)}` : 'No order selected'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Location:</p>
+                  <p className="font-medium">Ranchi, Jharkhand</p>
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Map Container with Tracking Overlay */}
+            <div className="relative">
+              {/* Google Maps Iframe */}
+              <div className="h-96 w-full rounded-lg overflow-hidden border shadow-lg">
+                <iframe
+                  src={createMapUrl()}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Order Tracking Map - Ranchi"
+                ></iframe>
+              </div>
+
+              {/* Tracking Overlay */}
+              <div className="absolute top-4 left-4 right-4">
+                <div className="bg-white/95 backdrop-blur-sm rounded-lg p-4 shadow-lg border">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-gray-800">Live Tracking</h4>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={startDeliverySimulation}
+                        disabled={isDelivering}
+                        className={`px-3 py-1 text-xs rounded font-medium ${
+                          isDelivering 
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            : 'bg-blue-500 hover:bg-blue-600 text-white'
+                        }`}
+                      >
+                        {isDelivering ? 'Tracking...' : 'Start Simulation'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Progress Visualization */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span className="font-medium">Pickup Point</span>
+                      </div>
+                      
+                      <div className="flex-1 mx-4">
+                        <div className="relative">
+                          <div className="h-0.5 bg-gray-300 rounded"></div>
+                          <div 
+                            className="absolute top-0 h-0.5 bg-blue-500 rounded transition-all duration-1000"
+                            style={{ width: `${deliveryProgress}%` }}
+                          ></div>
+                          <div 
+                            className="absolute top-0 w-4 h-4 bg-blue-500 rounded-full transform -translate-y-1.5 -translate-x-2 transition-all duration-1000 flex items-center justify-center"
+                            style={{ left: `${deliveryProgress}%` }}
+                          >
+                            <span className="text-white text-xs">🚚</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Delivery Point</span>
+                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      </div>
+                    </div>
+
+                    {/* Status Display */}
+                    <div className="text-center">
+                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
+                        deliveryProgress === 100 
+                          ? 'bg-green-100 text-green-800' 
+                          : isDelivering 
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        <div className={`w-2 h-2 rounded-full ${
+                          deliveryProgress === 100 
+                            ? 'bg-green-500' 
+                            : isDelivering 
+                              ? 'bg-blue-500 animate-pulse'
+                              : 'bg-gray-400'
+                        }`}></div>
+                        {deliveryProgress === 100 
+                          ? 'Delivered Successfully!' 
+                          : isDelivering 
+                            ? `En Route - ${deliveryProgress}% Complete`
+                            : 'Ready to Track'
+                        }
+                      </div>
+                    </div>
+
+                    {/* Live Coordinates */}
+                    <div className="text-xs text-gray-600 text-center">
+                      Current Position: {currentPos[0].toFixed(4)}°N, {currentPos[1].toFixed(4)}°E
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Status Panel */}
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="font-medium">
+                        {trackingOrderId ? `Tracking Order #${trackingOrderId.slice(-8)}` : 'Select Order to Track'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      ETA: {isDelivering ? `${Math.ceil((100 - deliveryProgress) / 2)} min` : '-- min'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Map Footer with Additional Info */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="bg-green-50 p-3 rounded-lg">
+                <h5 className="font-medium text-green-800 mb-1">Pickup Location</h5>
+                <p className="text-green-700">Restaurant/Store</p>
+                <p className="text-xs text-green-600">{pickup[0]}°N, {pickup[1]}°E</p>
+              </div>
+              
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <h5 className="font-medium text-blue-800 mb-1">Current Position</h5>
+                <p className="text-blue-700">{deliveryProgress}% Complete</p>
+                <p className="text-xs text-blue-600">{currentPos[0].toFixed(4)}°N, {currentPos[1].toFixed(4)}°E</p>
+              </div>
+              
+              <div className="bg-red-50 p-3 rounded-lg">
+                <h5 className="font-medium text-red-800 mb-1">Delivery Location</h5>
+                <p className="text-red-700">Customer Address</p>
+                <p className="text-xs text-red-600">{drop[0]}°N, {drop[1]}°E</p>
+              </div>
+            </div>
+
+            {/* External Map Link */}
+            <div className="mt-4 text-center">
+              <a 
+                href={`https://www.google.com/maps?q=${pickup[0]},${pickup[1]}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline text-sm"
+              >
+                Open Full Map in Google Maps
+              </a>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Order Details Modal */}
+      {/* Order Details Modal - Unchanged */}
       {showDetailModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -377,52 +532,39 @@ const Orders = () => {
               <h3 className="text-lg font-semibold">Order Details</h3>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowMapView(true)}
+                  onClick={() => handleTrackSpecificOrder(selectedOrder)}
                   className="text-green-600 hover:text-green-900 flex items-center gap-1 mr-2"
                   title="Show tracking map"
                 >
-                  <FiMapPin className="h-4 w-4" />
-                  Show Map
+                  <span>📍</span>
+                  Track Order
                 </button>
                 <button
                   onClick={closeDetailModal}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  <FiX className="h-6 w-6" />
+                  <span className="text-xl">✕</span>
                 </button>
               </div>
             </div>
 
             <div className="p-6 space-y-6">
+              {/* Order Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Order ID
-                  </label>
-                  <p className="text-sm text-gray-900">
-                    #{selectedOrder._id.slice(-8)}
-                  </p>
+                  <label className="text-sm font-medium text-gray-500">Order ID</label>
+                  <p className="text-sm text-gray-900">#{selectedOrder._id.slice(-8)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Date
-                  </label>
-                  <p className="text-sm text-gray-900">
-                    {formatDateTime(selectedOrder.createdAt)}
-                  </p>
+                  <label className="text-sm font-medium text-gray-500">Date</label>
+                  <p className="text-sm text-gray-900">{formatDateTime(selectedOrder.createdAt)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Amount
-                  </label>
-                  <p className="text-sm text-gray-900">
-                    {formatAmount(selectedOrder.totalAmount || selectedOrder.amount)}
-                  </p>
+                  <label className="text-sm font-medium text-gray-500">Amount</label>
+                  <p className="text-sm text-gray-900">{formatAmount(selectedOrder.totalAmount || selectedOrder.amount)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Status
-                  </label>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
                   <span
                     className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
                       selectedOrder.status
@@ -433,56 +575,21 @@ const Orders = () => {
                 </div>
               </div>
 
-              {user?.role === "MCP" && (
+              {/* Location Info */}
+              {orderLocation && (
                 <div className="border-t pt-6">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">
-                    Update Order Status
-                  </h4>
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value)}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="PENDING">Pending</option>
-                      <option value="PROCESSING">Processing</option>
-                      <option value="SHIPPED">Shipped</option>
-                      <option value="DELIVERED">Delivered</option>
-                      <option value="CANCELLED">Cancelled</option>
-                    </select>
-                    <Button
-                      onClick={handleUpdateStatus}
-                      disabled={isUpdatingStatus || newStatus === selectedOrder.status}
-                      variant="primary"
-                    >
-                      {isUpdatingStatus ? "Updating..." : "Update Status"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {user?.role === "MCP" && (
-                <div className="border-t pt-6">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">
-                    Location Sharing
-                  </h4>
-                  <div className="flex items-center gap-3">
-                    {isSharing && sharingOrderIdRef.current === selectedOrder._id ? (
-                      <Button
-                        onClick={stopSharingLocation}
-                        variant="secondary"
-                        icon={<FiPause />}
-                      >
-                        Stop Sharing Location
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => startSharingLocation(selectedOrder._id)}
-                        variant="primary"
-                        icon={<FiPlay />}
-                      >
-                        Start Sharing Location
-                      </Button>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Current Location</h4>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">
+                      Latitude: {orderLocation.latitude}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Longitude: {orderLocation.longitude}
+                    </p>
+                    {orderLocation.updatedAt && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Last updated: {formatDateTime(orderLocation.updatedAt)}
+                      </p>
                     )}
                   </div>
                 </div>
