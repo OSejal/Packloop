@@ -237,7 +237,7 @@ const Orders = () => {
                 onClick={handleTrackOrder}
                 className="flex items-center gap-2 bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                <span>📍</span>
+                <span><FiMapPin /></span>
                 {showMapView ? "Hide Map" : "Track Orders"}
               </button>
               
@@ -314,7 +314,7 @@ const Orders = () => {
                           onClick={() => handleViewDetails(order._id)}
                           className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
                         >
-                          <span>👁️</span>
+                          <span><FiEye /></span>
                           Details
                         </button>
                         
@@ -340,7 +340,7 @@ const Orders = () => {
       {/* MAP SECTION - Now appears BELOW the orders table */}
       {showMapView && (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="bg-blue-600 px-6 py-4 text-white">
+          <div className="bg-green-600 px-6 py-4 text-white">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-semibold">
                 Order Tracking - Ranchi {trackingOrderId && `(#${trackingOrderId.slice(-8)})`}

@@ -126,7 +126,7 @@ export default function TrackOrderMap() {
                   <div className="relative">
                     <div className="h-0.5 bg-gray-300 rounded"></div>
                     <div 
-                      className="absolute top-0 h-0.5 bg-blue-500 rounded transition-all duration-1000"
+                      className="absolute top-0 h-0.5 bg-green-500 rounded transition-all duration-1000"
                       style={{ width: `${deliveryProgress}%` }}
                     ></div>
                     {/* Moving truck indicator */}
@@ -134,7 +134,7 @@ export default function TrackOrderMap() {
                       className="absolute top-0 w-4 h-4 bg-blue-500 rounded-full transform -translate-y-1.5 -translate-x-2 transition-all duration-1000 flex items-center justify-center"
                       style={{ left: `${deliveryProgress}%` }}
                     >
-                      <span className="text-white text-xs">🚚</span>
+                      <span className="text-white text-xs"><FaTruck /></span>
                     </div>
                   </div>
                 </div>
