@@ -314,7 +314,7 @@ const Orders = () => {
                           onClick={() => handleViewDetails(order._id)}
                           className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
                         >
-                          <span><FiEye /></span>
+                          <span></span>
                           Details
                         </button>
                         
