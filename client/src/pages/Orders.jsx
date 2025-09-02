@@ -237,7 +237,7 @@ const Orders = () => {
                 onClick={handleTrackOrder}
                 className="flex items-center gap-2 bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                <span></span>
+                <span><FiMapPin /></span>
                 {showMapView ? "Hide Map" : "Track Orders"}
               </button>
               
@@ -314,7 +314,7 @@ const Orders = () => {
                           onClick={() => handleViewDetails(order._id)}
                           className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
                         >
-                          <span></span>
+                          <span><FiEye /></span>
                           Details
                         </button>
                         
@@ -323,7 +323,7 @@ const Orders = () => {
                             onClick={() => handleTrackSpecificOrder(order)}
                             className="text-green-600 hover:text-green-900 flex items-center gap-1"
                           >
-                            <span></span>
+                            <span>📍</span>
                             Track
                           </button>
                         )}
@@ -426,7 +426,7 @@ const Orders = () => {
                             className="absolute top-0 w-4 h-4 bg-blue-500 rounded-full transform -translate-y-1.5 -translate-x-2 transition-all duration-1000 flex items-center justify-center"
                             style={{ left: `${deliveryProgress}%` }}
                           >
-                            <span className="text-white text-xs"><FaTruck /></span>
+                            <span className="text-white text-xs">🚚</span>
                           </div>
                         </div>
                       </div>
